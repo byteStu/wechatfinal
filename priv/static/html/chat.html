@@ -79,7 +79,7 @@
                              var msg = Msg.create({type:1,data:{chat:{sender:user,body:txt,receiver:temp,timer:timestamp,display:showWindow,type:type}}});
 			                 var encodedObj = Msg.encode(msg).finish();
                              websocket.send(encodedObj);
-                             showScreen(temp,user+"：" + txt);
+                             showScreen(temp,'<span style="float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+txt+'：'+ user+'</span><br>');
                         }
            });
       };
@@ -106,7 +106,7 @@
                                 if(unread == "true"){
                                     tag = "(离线消息)";
                                 }
-                                showScreen(showTag,'<span style="color: blue;">' +sender+"："+content+ '<span style="color:red;">'+tag+'</span></span>');
+                                showScreen(showTag,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
                             break;
                             case 2: //在线 用户列表，群列表更新
                                 var data = msg.data.online.body;
@@ -138,7 +138,10 @@
                                         if(unread == "true"){
                                             tag = "(离线消息)";
                                         }
-                                        showScreen(display,'<span style="color: blue;">' +sender+"："+content+ '<span style="color:red;">'+tag+'</span></span>');
+                                        showScreen(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
+                                    }
+                                    if($("span:contains('(离线消息)')").length>0){
+                                         timer = setInterval("timerTask()",1000);
                                     }
                                 }
                             break;
@@ -190,6 +193,7 @@
             }
     }
 
+    var timer;
     function atToMe(obj){
        var toOne = $(obj).text();
        $("#toOne").val("@"+toOne);
@@ -200,7 +204,7 @@
             $(this).hide();
        });
        $("#"+toOne).show();
-       $("#groupInfo").hide(500);
+       $("#groupInfo").hide(100);
          var toHe = $("#toOne").val();
          var temp;
          if(toHe != ""){
@@ -214,13 +218,23 @@
                       sendFlushGroupUserMsg(temp);
                       var count = $("#"+temp).attr("name");
                       if(count == "0"){
-                        loadChatHistory(temp);
+                         loadChatHistory(temp);
                          $("#"+temp).attr("name","1");
                       }
                       $("#groupInfo").show(500);
                   }
             }
          }
+    }
+
+    function timerTask(){
+        var tempArr = $("span:contains('(离线消息)')");
+        if(tempArr.length>0){
+            console.log("定时任务:"+tempArr.length);
+            $("span:contains('(离线消息)')").last().text("");
+        }else{
+            timer = window.clearInterval(timer);
+        }
     }
 
     function flushUserList(users){
@@ -318,6 +332,11 @@
                          var encodedObj = Msg.encode(msg).finish();
                          websocket.send(encodedObj);
          });
+    }
+
+    // 发送 刷新私聊的消息
+    function  sendFlushPrivateMsg(receiver){
+
     }
 
     //加载群聊天记录

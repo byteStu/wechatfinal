@@ -47,20 +47,32 @@
         }).
 -endif.
 
+-ifndef('HISTORY_PB_H').
+-define('HISTORY_PB_H', true).
+-record(history,
+        {sender                 :: iodata() | undefined, % = 1
+         receiver               :: iodata() | undefined, % = 2
+         history = []           :: [wechatfinal_cmd_pb:chat()] | undefined, % = 3
+         pageSize               :: integer() | undefined, % = 4, 32 bits
+         pageNum                :: integer() | undefined % = 5, 32 bits
+        }).
+-endif.
+
 -ifndef('DATA_PB_H').
 -define('DATA_PB_H', true).
 -record(data,
         {chat                   :: wechatfinal_cmd_pb:chat() | undefined, % = 1
          online                 :: wechatfinal_cmd_pb:online() | undefined, % = 2
          room                   :: wechatfinal_cmd_pb:room() | undefined, % = 3
-         system                 :: wechatfinal_cmd_pb:system() | undefined % = 4
+         system                 :: wechatfinal_cmd_pb:system() | undefined, % = 4
+         history                :: wechatfinal_cmd_pb:history() | undefined % = 5
         }).
 -endif.
 
 -ifndef('MSG_PB_H').
 -define('MSG_PB_H', true).
 -record(msg,
-        {type                   :: 'chat' | 'online' | 'room' | 'system' | integer(), % = 1, enum cmd
+        {type                   :: 'chat' | 'online' | 'room' | 'system' | 'history' | integer(), % = 1, enum cmd
          data                   :: wechatfinal_cmd_pb:data() % = 2
         }).
 -endif.

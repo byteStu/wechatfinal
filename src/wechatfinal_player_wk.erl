@@ -95,6 +95,7 @@ start_link(Player) ->
 	{ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
 	{stop, Reason :: term()} | ignore).
 init([Self|_]) ->
+	erlang:send_after(30000,self(),{check_ws_alive}),
 	{ok, #state{self  = Self}}.
 
 %%--------------------------------------------------------------------
@@ -182,6 +183,16 @@ handle_info({send_online_msg,MsgEncode}, #state{self = Self}=State) ->
 	WsName = wechatfinal_util:get_ws_name(Self),
 	io:format("进到player info方法,WsName:~p~n",[WsName]),
 	WsName ! {resp_msg,MsgEncode},
+	{noreply, State};
+
+handle_info({check_ws_alive}, State) ->
+	{_,WkName} = process_info(self(),registered_name),
+	WsName = wechatfinal_util:get_ws_name(WkName),
+	case whereis(WsName) of
+		undefined -> wechatfinal_player_wk:sign_out(WkName);
+		_ -> erlang:send_after(30000,self(),{check_ws_alive})
+	end,
+	io:format("正在检查websocket进程...~n"),
 	{noreply, State};
 
 handle_info(_Info, State) ->

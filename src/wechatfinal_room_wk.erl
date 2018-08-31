@@ -253,8 +253,13 @@ handle_cast(_Request, State) ->
 %% @doc 发送消息
 handle_info({resp_msg,EncodeMsg}, #state{userList = UserList}=State) ->
 	Decoder = wechatfinal_cmd_pb:decode_msg(EncodeMsg,msg),
-	Sender = binary_to_atom(Decoder#msg.data#data.chat#chat.sender,utf8),
-	[X ! {resp_msg,EncodeMsg} || X <- UserList,whereis(X) =/= undefined,X =/= Sender],
+	Type = Decoder#msg.type,
+	case Type of
+		 chat -> Sender = Decoder#msg.data#data.chat#chat.sender,
+			     SenderAtom = binary_to_atom(Sender,utf8),
+			     [X ! {resp_msg,EncodeMsg} || X <- UserList,whereis(X) =/= undefined,X =/= SenderAtom];
+		 _ -> [X ! {resp_msg,EncodeMsg} || X <- UserList,whereis(X) =/= undefined]
+	end,
 	{noreply, State};
 
 %% @doc 群通知，用户上线

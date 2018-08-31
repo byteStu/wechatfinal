@@ -5,7 +5,7 @@ enum cmd {
    online = 2;
    room = 3;
    system = 4;
-
+   history = 5;
 }
 
 enum pattern{
@@ -50,17 +50,23 @@ message system{
     required string body = 3;
 }
 
+message history{
+    optional string sender = 1;
+    optional string receiver = 2;
+    repeated chat  history = 3;
+    optional sint64 pageSize = 4;
+    optional sint64 pageNum = 5;
+}
 
 message data{
     optional chat chat = 1;
     optional online online = 2;
     optional room room = 3;
     optional system system = 4;
+    optional history history = 5;
 }
-
 
 message msg{
     required cmd type = 1;
     required data data = 2;
 }
-
