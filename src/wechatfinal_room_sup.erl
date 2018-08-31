@@ -31,7 +31,7 @@ start_child(RoomNameAtom) ->
 %% @doc 关房
 -spec stop_child(RoomNameAtom::atom()) ->term().
 stop_child(RoomNameAtom) ->
-	supervisor:terminate(?SERVER,RoomNameAtom),
+	supervisor:terminate_child(?SERVER,RoomNameAtom),
 	supervisor:delete_child(?SERVER,RoomNameAtom).
 
 %% @doc 返回子节点名字列表

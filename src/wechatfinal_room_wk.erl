@@ -241,7 +241,9 @@ handle_cast(_Request, State) ->
 
 %% @doc 发送消息
 handle_info({resp_msg,EncodeMsg}, #state{userList = UserList}=State) ->
-	[X ! {resp_msg,EncodeMsg} || X <- UserList,whereis(X) =/= undefined],
+	Decoder = wechatfinal_cmd_pb:decode_msg(EncodeMsg,msg),
+	Sender = binary_to_atom(Decoder#msg.data#data.chat#chat.sender,utf8),
+	[X ! {resp_msg,EncodeMsg} || X <- UserList,whereis(X) =/= undefined,X =/= Sender],
 	{noreply, State};
 
 %% @doc 群通知，用户上线

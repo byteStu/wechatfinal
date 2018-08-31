@@ -31,7 +31,7 @@ start_child(Player) ->
 %% @doc 关闭玩家进程
 -spec stop_child(Player::atom()) ->term().
 stop_child(Player) ->
-	supervisor:terminate(?SERVER,Player),
+	supervisor:terminate_child(?SERVER,Player),
 	supervisor:delete_child(?SERVER,Player).
 
 %% @doc 返回子节点名字列表
