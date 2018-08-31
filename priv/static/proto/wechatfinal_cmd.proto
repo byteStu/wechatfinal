@@ -29,6 +29,7 @@ message chat{
     optional sint64 timer = 4;
     required string display = 5;
     optional pattern type = 6;
+    optional string unread = 7;
 }
 
 message online{

@@ -15,7 +15,8 @@
          receiver               :: iodata(),        % = 3
          timer                  :: integer() | undefined, % = 4, 32 bits
          display                :: iodata(),        % = 5
-         type                   :: 'private' | 'public' | integer() | undefined % = 6, enum pattern
+         type                   :: 'private' | 'public' | integer() | undefined, % = 6, enum pattern
+         unread                 :: iodata() | undefined % = 7
         }).
 -endif.
 

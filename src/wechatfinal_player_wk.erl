@@ -146,8 +146,16 @@ handle_cast({send_msg,Decoder}, State) ->
 	EncodeMsg = wechatfinal_cmd_pb:encode_msg(Decoder),
 	ReceiverAtom ! {resp_msg,EncodeMsg},
 	
+	Online = case Type of
+				private -> case whereis(ReceiverAtom) of
+					           undefined ->  [];
+					           _ ->  [ReceiverAtom]
+						   end;
+				public -> wechatfinal_room_wk:get_room_online_users(ReceiverAtom)
+			 end,
+	io:format("Online:~p~n",[Online]),
 	%% 把消息存起来
-	wechatfinal_mnesia:add_msgs(Sender,Body,Receiver,Type,Timer),
+	wechatfinal_mnesia:add_msgs(Sender,Body,Receiver,Type,Timer,Online),
 	
 	{noreply, State};
 

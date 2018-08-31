@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,handle_room/2,get_room_list/0,call/2,cast/2]).
+-export([start_link/1,handle_room/2,get_room_list/0,call/2,cast/2,get_room_online_users/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -100,15 +100,21 @@ load_room_chat_history(Sender,Decoder) ->
 	RoomName = Decoder#msg.data#data.room#room.rname,
 	%%RoomNameAtom = binary_to_atom(RoomName,utf8),
 	MsgList = wechatfinal_mnesia:q_msg_by_gname(RoomName),
-	NewMsgList = [#chat{sender = S,body = B,receiver = RoomName,display = RoomName}||{S,B,_} <- MsgList],
+	NewMsgList = [#chat{sender = S,body = B,receiver = RoomName,display = RoomName,unread = atom_to_binary(lists:member(Sender,O),utf8)}||{S,B,_R,_Ty,_Ti,O} <- MsgList],
 	Msg = #msg{type = room,data = #data{room = #room{type = history,rname = RoomName,history = NewMsgList}}},
 	EncodeMsg = wechatfinal_cmd_pb:encode_msg(Msg),
-	Sender ! {resp_msg,EncodeMsg}.
+	Sender ! {resp_msg,EncodeMsg},
+	[wechatfinal_mnesia:update_msg(S,B,R,Ty,Ti,O,Sender)||{S,B,R,Ty,Ti,O} <- MsgList].
 
 %% @doc 获得所有房间列表
 -spec get_room_list() -> list().
 get_room_list() ->
 	wechatfinal_room_sup:get_child_name().
+
+%% @doc 获得房间所有在线成员
+-spec get_room_online_users(GnameAtom::atom()) -> list().
+get_room_online_users(GnameAtom) ->
+	call(GnameAtom,{get_room_online_users}).
 
 %% @doc gen_server的封装
 -spec call(Pid::pid()|atom(),Msg::term()) -> term().
@@ -198,6 +204,11 @@ handle_call({add_user,RoomNameAtom,UserAtom}, _From, #state{userList = UserList}
 %% @doc 解散本群
 handle_call({drop_room}, _From, State) ->
 	{stop, normal, State};
+
+%% @doc 获得房间所有的在线成员
+handle_call({get_room_online_users}, _From, #state{userList = UserList}=State) ->
+	io:format("~n房间在线成员:~p~n",[UserList]),
+	{reply, UserList, State};
 
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.

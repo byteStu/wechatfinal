@@ -17,7 +17,7 @@
          delete_table/1,
          q_all_users/0,
          q_users_password/1,
-         add_msgs/5,
+         add_msgs/6,
          create_groups_by_name/2,
          create_groups_by_record/1,
          drop_groups/1,
@@ -27,12 +27,14 @@
          init_mnesia/0,
          q_all_groups/0,
          q_msg_by_gname/1,
-         q_all_groups_by_uname/1
+         q_all_groups_by_uname/1,
+         q_all_members_by_gname/1,
+         update_msg/7
          ]).
 
 -record(users,{uname,pwd}).
 -record(groups,{gname,uname}).
--record(msgs,{sender,body,receiver,msgtype,sendtimer}).
+-record(msgs,{sender,body,receiver,msgtype,sendtimer,offline}).
 
 start() -> mnesia:start(),mnesia:wait_for_tables([users,groups,msgs],1000),ok.
 
@@ -131,26 +133,48 @@ q_groups(Gname) ->
 q_all_groups() ->
     do(qlc:q([ G || #groups{gname = G} <- mnesia:table(groups)])).
 
+%% @doc 根据群名字，查询群用户列表
+-spec q_all_members_by_gname(Gname::atom()) -> list().
+q_all_members_by_gname(Gname) ->
+    [UserList] =do(qlc:q([ U || #groups{gname = G,uname = U} <- mnesia:table(groups),G =:= Gname])),
+    UserList.
+
 %% @doc 根据用户查询群列表
 -spec q_all_groups_by_uname(Uname::atom()) -> list().
 q_all_groups_by_uname(Uname) ->
     do(qlc:q([ G || #groups{gname = G,uname = U} <- mnesia:table(groups),lists:member(Uname,U)])).
 
-%% -record(msgs,{sender,body,receiver,msgtype,sendtimer}).
+%% -record(msgs,{sender,body,receiver,msgtype,sendtimer,offline}).
 %% @doc 消息表相关
 
 %% @doc 添加一行消息记录
--spec add_msgs(Sender::term(),Body::term(),Receiver::term(),MsgType::term(),Sendtimer::term()) -> term().
-add_msgs(Sender,Body,Receiver,MsgType,Sendtimer) ->
-    Row = #msgs{sender = Sender,body = Body,receiver = Receiver,msgtype = MsgType,sendtimer = Sendtimer},
+-spec add_msgs(Sender::term(),Body::term(),Receiver::term(),MsgType::term(),Sendtimer::term(),OnlineUsers::term()) -> term().
+add_msgs(Sender,Body,Receiver,MsgType,Sendtimer,OnlineUsers) ->
+    ReceiverAtom = binary_to_atom(Receiver,utf8),
+    Offline =   case MsgType of
+                    private  -> [ReceiverAtom] -- OnlineUsers;
+                    public -> Members = q_all_members_by_gname(ReceiverAtom),
+                              Members -- OnlineUsers
+                end,
+    Row = #msgs{sender = Sender,body = Body,receiver = Receiver,msgtype = MsgType,sendtimer = Sendtimer,offline = Offline},
     F = fun() -> mnesia:write(Row) end,
     mnesia:transaction(F).
 
-%% 查询聊天记录
--spec q_msg_by_gname(RoomNameAtom::atom()) -> term().
+%% @doc 查询聊天记录
+-spec q_msg_by_gname(RoomName::term()) -> term().
 q_msg_by_gname(RoomName) ->
-    QList = do(qlc:q([ {S,B,T} || #msgs{sender = S,body = B,receiver = R,sendtimer = T} <- mnesia:table(msgs),R =:= RoomName])),
-    lists:keysort(3,QList).
+    QList = do(qlc:q([ {S,B,R,Ty,Ti,O} || #msgs{sender = S,body = B,receiver = R,msgtype = Ty,sendtimer = Ti,offline = O} <- mnesia:table(msgs),R =:= RoomName])),
+    lists:keysort(5,QList).
+
+%% @doc 更新一条消息
+-spec update_msg(Sender::term(),Body::term(),Receiver::term(),MsgType::term(),Sendtimer::term(),Offline::term(),CurrUser::term()) -> term().
+update_msg(Sender,Body,Receiver,MsgType,Sendtimer,Offline,CurrUser) ->
+    Msg = #msgs{sender = Sender,body = Body,receiver = Receiver,msgtype = MsgType,sendtimer = Sendtimer,offline = Offline},
+    NewMsg = Msg#msgs{offline = Offline -- [CurrUser]},
+    F = fun() -> mnesia:delete_object(msgs,Msg,write),
+                 mnesia:write(NewMsg)
+                 end,
+    mnesia:transaction(F).
     
 
 example_tables() ->

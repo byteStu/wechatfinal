@@ -67,7 +67,7 @@ e_msg_chat(Msg, TrUserData) ->
 
 
 e_msg_chat(#chat{sender = F1, body = F2, receiver = F3,
-		 timer = F4, display = F5, type = F6},
+		 timer = F4, display = F5, type = F6, unread = F7},
 	   Bin, TrUserData) ->
     B1 = begin
 	   TrF1 = id(F1, TrUserData),
@@ -92,11 +92,18 @@ e_msg_chat(#chat{sender = F1, body = F2, receiver = F3,
 	   TrF5 = id(F5, TrUserData),
 	   e_type_string(TrF5, <<B4/binary, 42>>)
 	 end,
-    if F6 == undefined -> B5;
+    B6 = if F6 == undefined -> B5;
+	    true ->
+		begin
+		  TrF6 = id(F6, TrUserData),
+		  e_enum_pattern(TrF6, <<B5/binary, 48>>)
+		end
+	 end,
+    if F7 == undefined -> B6;
        true ->
 	   begin
-	     TrF6 = id(F6, TrUserData),
-	     e_enum_pattern(TrF6, <<B5/binary, 48>>)
+	     TrF7 = id(F7, TrUserData),
+	     e_type_string(TrF7, <<B6/binary, 58>>)
 	   end
     end.
 
@@ -345,144 +352,156 @@ d_msg_chat(Bin, TrUserData) ->
 			    id(undefined, TrUserData),
 			    id(undefined, TrUserData),
 			    id(undefined, TrUserData),
+			    id(undefined, TrUserData),
 			    id(undefined, TrUserData), TrUserData).
 
 dfp_read_field_def_chat(<<10, Rest/binary>>, Z1, Z2,
-			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     d_field_chat_sender(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			F@_4, F@_5, F@_6, TrUserData);
+			F@_4, F@_5, F@_6, F@_7, TrUserData);
 dfp_read_field_def_chat(<<18, Rest/binary>>, Z1, Z2,
-			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     d_field_chat_body(Rest, Z1, Z2, F@_1, F@_2, F@_3, F@_4,
-		      F@_5, F@_6, TrUserData);
+		      F@_5, F@_6, F@_7, TrUserData);
 dfp_read_field_def_chat(<<26, Rest/binary>>, Z1, Z2,
-			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     d_field_chat_receiver(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			  F@_4, F@_5, F@_6, TrUserData);
+			  F@_4, F@_5, F@_6, F@_7, TrUserData);
 dfp_read_field_def_chat(<<32, Rest/binary>>, Z1, Z2,
-			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     d_field_chat_timer(Rest, Z1, Z2, F@_1, F@_2, F@_3, F@_4,
-		       F@_5, F@_6, TrUserData);
+		       F@_5, F@_6, F@_7, TrUserData);
 dfp_read_field_def_chat(<<42, Rest/binary>>, Z1, Z2,
-			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     d_field_chat_display(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			 F@_4, F@_5, F@_6, TrUserData);
+			 F@_4, F@_5, F@_6, F@_7, TrUserData);
 dfp_read_field_def_chat(<<48, Rest/binary>>, Z1, Z2,
-			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     d_field_chat_type(Rest, Z1, Z2, F@_1, F@_2, F@_3, F@_4,
-		      F@_5, F@_6, TrUserData);
+		      F@_5, F@_6, F@_7, TrUserData);
+dfp_read_field_def_chat(<<58, Rest/binary>>, Z1, Z2,
+			F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
+    d_field_chat_unread(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			F@_4, F@_5, F@_6, F@_7, TrUserData);
 dfp_read_field_def_chat(<<>>, 0, 0, F@_1, F@_2, F@_3,
-			F@_4, F@_5, F@_6, _) ->
+			F@_4, F@_5, F@_6, F@_7, _) ->
     #chat{sender = F@_1, body = F@_2, receiver = F@_3,
-	  timer = F@_4, display = F@_5, type = F@_6};
+	  timer = F@_4, display = F@_5, type = F@_6,
+	  unread = F@_7};
 dfp_read_field_def_chat(Other, Z1, Z2, F@_1, F@_2, F@_3,
-			F@_4, F@_5, F@_6, TrUserData) ->
+			F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     dg_read_field_def_chat(Other, Z1, Z2, F@_1, F@_2, F@_3,
-			   F@_4, F@_5, F@_6, TrUserData).
+			   F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 dg_read_field_def_chat(<<1:1, X:7, Rest/binary>>, N,
-		       Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		       Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7,
+		       TrUserData)
     when N < 32 - 7 ->
     dg_read_field_def_chat(Rest, N + 7, X bsl N + Acc, F@_1,
-			   F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+			   F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 dg_read_field_def_chat(<<0:1, X:7, Rest/binary>>, N,
-		       Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+		       Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7,
+		       TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
       10 ->
 	  d_field_chat_sender(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
-			      F@_5, F@_6, TrUserData);
+			      F@_5, F@_6, F@_7, TrUserData);
       18 ->
 	  d_field_chat_body(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
-			    F@_5, F@_6, TrUserData);
+			    F@_5, F@_6, F@_7, TrUserData);
       26 ->
 	  d_field_chat_receiver(Rest, 0, 0, F@_1, F@_2, F@_3,
-				F@_4, F@_5, F@_6, TrUserData);
+				F@_4, F@_5, F@_6, F@_7, TrUserData);
       32 ->
 	  d_field_chat_timer(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
-			     F@_5, F@_6, TrUserData);
+			     F@_5, F@_6, F@_7, TrUserData);
       42 ->
 	  d_field_chat_display(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
-			       F@_5, F@_6, TrUserData);
+			       F@_5, F@_6, F@_7, TrUserData);
       48 ->
 	  d_field_chat_type(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
-			    F@_5, F@_6, TrUserData);
+			    F@_5, F@_6, F@_7, TrUserData);
+      58 ->
+	  d_field_chat_unread(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
+			      F@_5, F@_6, F@_7, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 ->
 		skip_varint_chat(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
-				 F@_5, F@_6, TrUserData);
+				 F@_5, F@_6, F@_7, TrUserData);
 	    1 ->
 		skip_64_chat(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4, F@_5,
-			     F@_6, TrUserData);
+			     F@_6, F@_7, TrUserData);
 	    2 ->
 		skip_length_delimited_chat(Rest, 0, 0, F@_1, F@_2, F@_3,
-					   F@_4, F@_5, F@_6, TrUserData);
+					   F@_4, F@_5, F@_6, F@_7, TrUserData);
 	    3 ->
 		skip_group_chat(Rest, Key bsr 3, 0, F@_1, F@_2, F@_3,
-				F@_4, F@_5, F@_6, TrUserData);
+				F@_4, F@_5, F@_6, F@_7, TrUserData);
 	    5 ->
 		skip_32_chat(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4, F@_5,
-			     F@_6, TrUserData)
+			     F@_6, F@_7, TrUserData)
 	  end
     end;
 dg_read_field_def_chat(<<>>, 0, 0, F@_1, F@_2, F@_3,
-		       F@_4, F@_5, F@_6, _) ->
+		       F@_4, F@_5, F@_6, F@_7, _) ->
     #chat{sender = F@_1, body = F@_2, receiver = F@_3,
-	  timer = F@_4, display = F@_5, type = F@_6}.
+	  timer = F@_4, display = F@_5, type = F@_6,
+	  unread = F@_7}.
 
 d_field_chat_sender(<<1:1, X:7, Rest/binary>>, N, Acc,
-		    F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		    F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
     when N < 57 ->
     d_field_chat_sender(Rest, N + 7, X bsl N + Acc, F@_1,
-			F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+			F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 d_field_chat_sender(<<0:1, X:7, Rest/binary>>, N, Acc,
-		    _, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+		    _, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_chat(RestF, 0, 0, NewFValue, F@_2,
-			    F@_3, F@_4, F@_5, F@_6, TrUserData).
+			    F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 d_field_chat_body(<<1:1, X:7, Rest/binary>>, N, Acc,
-		  F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		  F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
     when N < 57 ->
     d_field_chat_body(Rest, N + 7, X bsl N + Acc, F@_1,
-		      F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+		      F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 d_field_chat_body(<<0:1, X:7, Rest/binary>>, N, Acc,
-		  F@_1, _, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+		  F@_1, _, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_chat(RestF, 0, 0, F@_1, NewFValue,
-			    F@_3, F@_4, F@_5, F@_6, TrUserData).
+			    F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 d_field_chat_receiver(<<1:1, X:7, Rest/binary>>, N, Acc,
-		      F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		      F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
     when N < 57 ->
     d_field_chat_receiver(Rest, N + 7, X bsl N + Acc, F@_1,
-			  F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+			  F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 d_field_chat_receiver(<<0:1, X:7, Rest/binary>>, N, Acc,
-		      F@_1, F@_2, _, F@_4, F@_5, F@_6, TrUserData) ->
+		      F@_1, F@_2, _, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_chat(RestF, 0, 0, F@_1, F@_2,
-			    NewFValue, F@_4, F@_5, F@_6, TrUserData).
+			    NewFValue, F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 d_field_chat_timer(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		   F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
     when N < 57 ->
     d_field_chat_timer(Rest, N + 7, X bsl N + Acc, F@_1,
-		       F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+		       F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 d_field_chat_timer(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F@_1, F@_2, F@_3, _, F@_5, F@_6, TrUserData) ->
+		   F@_1, F@_2, F@_3, _, F@_5, F@_6, F@_7, TrUserData) ->
     {NewFValue, RestF} = {begin
 			    ZValue = X bsl N + Acc,
 			    if ZValue band 1 =:= 0 -> ZValue bsr 1;
@@ -491,30 +510,30 @@ d_field_chat_timer(<<0:1, X:7, Rest/binary>>, N, Acc,
 			  end,
 			  Rest},
     dfp_read_field_def_chat(RestF, 0, 0, F@_1, F@_2, F@_3,
-			    NewFValue, F@_5, F@_6, TrUserData).
+			    NewFValue, F@_5, F@_6, F@_7, TrUserData).
 
 d_field_chat_display(<<1:1, X:7, Rest/binary>>, N, Acc,
-		     F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		     F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
     when N < 57 ->
     d_field_chat_display(Rest, N + 7, X bsl N + Acc, F@_1,
-			 F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+			 F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 d_field_chat_display(<<0:1, X:7, Rest/binary>>, N, Acc,
-		     F@_1, F@_2, F@_3, F@_4, _, F@_6, TrUserData) ->
+		     F@_1, F@_2, F@_3, F@_4, _, F@_6, F@_7, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_chat(RestF, 0, 0, F@_1, F@_2, F@_3,
-			    F@_4, NewFValue, F@_6, TrUserData).
+			    F@_4, NewFValue, F@_6, F@_7, TrUserData).
 
 d_field_chat_type(<<1:1, X:7, Rest/binary>>, N, Acc,
-		  F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+		  F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
     when N < 57 ->
     d_field_chat_type(Rest, N + 7, X bsl N + Acc, F@_1,
-		      F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+		      F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
 d_field_chat_type(<<0:1, X:7, Rest/binary>>, N, Acc,
-		  F@_1, F@_2, F@_3, F@_4, F@_5, _, TrUserData) ->
+		  F@_1, F@_2, F@_3, F@_4, F@_5, _, F@_7, TrUserData) ->
     {NewFValue, RestF} = {d_enum_pattern(begin
 					   <<Res:32/signed-native>> = <<(X bsl N
 									   +
@@ -523,45 +542,62 @@ d_field_chat_type(<<0:1, X:7, Rest/binary>>, N, Acc,
 					 end),
 			  Rest},
     dfp_read_field_def_chat(RestF, 0, 0, F@_1, F@_2, F@_3,
-			    F@_4, F@_5, NewFValue, TrUserData).
+			    F@_4, F@_5, NewFValue, F@_7, TrUserData).
+
+d_field_chat_unread(<<1:1, X:7, Rest/binary>>, N, Acc,
+		    F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData)
+    when N < 57 ->
+    d_field_chat_unread(Rest, N + 7, X bsl N + Acc, F@_1,
+			F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData);
+d_field_chat_unread(<<0:1, X:7, Rest/binary>>, N, Acc,
+		    F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, _, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {binary:copy(Bytes), Rest2}
+			 end,
+    dfp_read_field_def_chat(RestF, 0, 0, F@_1, F@_2, F@_3,
+			    F@_4, F@_5, F@_6, NewFValue, TrUserData).
 
 skip_varint_chat(<<1:1, _:7, Rest/binary>>, Z1, Z2,
-		 F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+		 F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     skip_varint_chat(Rest, Z1, Z2, F@_1, F@_2, F@_3, F@_4,
-		     F@_5, F@_6, TrUserData);
+		     F@_5, F@_6, F@_7, TrUserData);
 skip_varint_chat(<<0:1, _:7, Rest/binary>>, Z1, Z2,
-		 F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+		 F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     dfp_read_field_def_chat(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			    F@_4, F@_5, F@_6, TrUserData).
+			    F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 skip_length_delimited_chat(<<1:1, X:7, Rest/binary>>, N,
-			   Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData)
+			   Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7,
+			   TrUserData)
     when N < 57 ->
     skip_length_delimited_chat(Rest, N + 7, X bsl N + Acc,
-			       F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData);
+			       F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7,
+			       TrUserData);
 skip_length_delimited_chat(<<0:1, X:7, Rest/binary>>, N,
-			   Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6,
+			   Acc, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, F@_7,
 			   TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
     dfp_read_field_def_chat(Rest2, 0, 0, F@_1, F@_2, F@_3,
-			    F@_4, F@_5, F@_6, TrUserData).
+			    F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 skip_group_chat(Bin, FNum, Z2, F@_1, F@_2, F@_3, F@_4,
-		F@_5, F@_6, TrUserData) ->
+		F@_5, F@_6, F@_7, TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
     dfp_read_field_def_chat(Rest, 0, Z2, F@_1, F@_2, F@_3,
-			    F@_4, F@_5, F@_6, TrUserData).
+			    F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 skip_32_chat(<<_:32, Rest/binary>>, Z1, Z2, F@_1, F@_2,
-	     F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+	     F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     dfp_read_field_def_chat(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			    F@_4, F@_5, F@_6, TrUserData).
+			    F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 skip_64_chat(<<_:64, Rest/binary>>, Z1, Z2, F@_1, F@_2,
-	     F@_3, F@_4, F@_5, F@_6, TrUserData) ->
+	     F@_3, F@_4, F@_5, F@_6, F@_7, TrUserData) ->
     dfp_read_field_def_chat(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			    F@_4, F@_5, F@_6, TrUserData).
+			    F@_4, F@_5, F@_6, F@_7, TrUserData).
 
 d_msg_online(Bin, TrUserData) ->
     dfp_read_field_def_online(Bin, 0, 0,
@@ -1407,10 +1443,11 @@ merge_msgs(Prev, New, Opts)
       #msg{} -> merge_msg_msg(Prev, New, TrUserData)
     end.
 
-merge_msg_chat(#chat{timer = PFtimer, type = PFtype},
+merge_msg_chat(#chat{timer = PFtimer, type = PFtype,
+		     unread = PFunread},
 	       #chat{sender = NFsender, body = NFbody,
 		     receiver = NFreceiver, timer = NFtimer,
-		     display = NFdisplay, type = NFtype},
+		     display = NFdisplay, type = NFtype, unread = NFunread},
 	       _) ->
     #chat{sender = NFsender, body = NFbody,
 	  receiver = NFreceiver,
@@ -1422,6 +1459,10 @@ merge_msg_chat(#chat{timer = PFtimer, type = PFtype},
 	  type =
 	      if NFtype =:= undefined -> PFtype;
 		 true -> NFtype
+	      end,
+	  unread =
+	      if NFunread =:= undefined -> PFunread;
+		 true -> NFunread
 	      end}.
 
 merge_msg_online(#online{body = PFbody},
@@ -1513,7 +1554,7 @@ verify_msg(Msg, Opts) ->
 
 -dialyzer({nowarn_function,v_msg_chat/3}).
 v_msg_chat(#chat{sender = F1, body = F2, receiver = F3,
-		 timer = F4, display = F5, type = F6},
+		 timer = F4, display = F5, type = F6, unread = F7},
 	   Path, _) ->
     v_type_string(F1, [sender | Path]),
     v_type_string(F2, [body | Path]),
@@ -1524,6 +1565,9 @@ v_msg_chat(#chat{sender = F1, body = F2, receiver = F3,
     v_type_string(F5, [display | Path]),
     if F6 == undefined -> ok;
        true -> v_enum_pattern(F6, [type | Path])
+    end,
+    if F7 == undefined -> ok;
+       true -> v_type_string(F7, [unread | Path])
     end,
     ok;
 v_msg_chat(X, Path, _TrUserData) ->
@@ -1712,7 +1756,9 @@ get_msg_defs() ->
 	      type = string, occurrence = required, opts = []},
        #field{name = type, fnum = 6, rnum = 7,
 	      type = {enum, pattern}, occurrence = optional,
-	      opts = []}]},
+	      opts = []},
+       #field{name = unread, fnum = 7, rnum = 8, type = string,
+	      occurrence = optional, opts = []}]},
      {{msg, online},
       [#field{name = type, fnum = 1, rnum = 2,
 	      type = {enum, pattern}, occurrence = required,
@@ -1796,7 +1842,9 @@ find_msg_def(chat) ->
 	    type = string, occurrence = required, opts = []},
      #field{name = type, fnum = 6, rnum = 7,
 	    type = {enum, pattern}, occurrence = optional,
-	    opts = []}];
+	    opts = []},
+     #field{name = unread, fnum = 7, rnum = 8, type = string,
+	    occurrence = optional, opts = []}];
 find_msg_def(online) ->
     [#field{name = type, fnum = 1, rnum = 2,
 	    type = {enum, pattern}, occurrence = required,
