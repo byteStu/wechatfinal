@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <title>Websocket client</title>
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/protobuf.js"></script>
+    <script>
+      var websocket;
+      var user = getCookie("user");
+      $(document).ready(init);
+      function init() {
+             $('#server').val("ws://" + window.location.host + "/websocket?");
+             if(!("WebSocket" in window)){
+              $('#status').append('<p><span style="color: red;">websockets are not supported </span></p>');
+              $("#navigation").hide();
+              } else {
+                  // $('#status').append('<p><span style="color: green;">websockets are supported </span></p>');
+                  connect();
+              };
+      };
+
+      function connect()
+      {
+          wsHost = $("#server").val()
+          websocket = new WebSocket(wsHost);
+         // showScreen('<b>Connecting to: ' +  wsHost + '</b>');
+          websocket.onopen = function(evt) { onOpen(evt) };
+         // websocket.onclose = function(evt) { onClose(evt) };
+          websocket.onmessage = function(evt) { onMessage(evt) };
+          websocket.onerror = function(evt) { onError(evt) };
+      };
+
+      function disconnect() {
+          websocket.close();
+      };
+
+      function toggle_connection(){
+          if(websocket.readyState == websocket.OPEN){
+              disconnect();
+          } else {
+              connect();
+          };
+      };
+      // 发送消息
+      function sendTxt() {
+          if(websocket.readyState != websocket.OPEN){
+               connect();
+               console.log("websocket状态："+websocket.readyState);
+               setTimeout(function(){},1000);
+          }
+          protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                        var Msg = root.lookup("wechat.msg");
+                        txt = $("#send_txt").val();
+                        $("#send_txt").val("");
+                        if(txt != ""){
+                             var toHe = $("#toOne").val();
+                             var temp;
+                             if(toHe == ""){
+                                alert("不知道发给谁！");
+                                return;
+                             }else{
+                                toHe = toHe.split("@");
+                                temp = toHe[1];
+                             }
+                             var showWindow = "";
+                             var type = "";
+                             parentId = $("#"+temp).parent().attr("id");
+                             if(parentId == "userOutPut"){
+                                showWindow = user;
+                                type = 1;
+                             }else{
+                                showWindow = temp;
+                                type = 2;
+                             }
+                             var timestamp = new Date().getTime();
+                             var msg = Msg.create({type:1,data:{chat:{sender:user,body:txt,receiver:temp,timer:timestamp,display:showWindow,type:type}}});
+			                 var encodedObj = Msg.encode(msg).finish();
+                             websocket.send(encodedObj);
+                             showScreen(temp,user+"：" + txt);
+                        }
+           });
+      };
+
+      // 接收消息
+      function onMessage(evt) {
+           var reader = new FileReader();
+           reader.readAsArrayBuffer(evt.data);
+           reader.onload = function(e){
+               var res =new Uint8Array(reader.result);
+               protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                        var Msg = root.lookup("wechat.msg");
+                        msg = Msg.decode(res);
+                        console.log(msg);
+                        switch(msg.type){
+                            case 1: //聊天
+                                var showTag = msg.data.chat.display;
+                                var sender = msg.data.chat.sender;
+                                var content = msg.data.chat.body;
+                                showScreen(showTag,'<span style="color: blue;">' +sender+"："+content+ '</span>');
+                            break;
+                            case 2: //在线 用户列表，群列表更新
+                                var data = msg.data.online.body;
+                                if(data != ""){
+                                    if( msg.data.online.type == 1){
+                                         flushUserList(data);
+                                    }else{
+                                         flushGroupList(data);
+                                    }
+                                }
+                            break;
+                            case 3: //房间
+                                var rtype = msg.data.room.type;
+                                if(rtype == 5){
+                                    var data = msg.data.room.body;
+                                    if(data != ""){
+                                        flushGroupUserList(data);
+                                    }
+                                }else if(rtype == 6){
+                                    var chatList = msg.data.room.history;
+                                    console.log("聊天记录"+chatList);
+                                    for(var i=0;i<chatList.length;i++){
+                                        showScreen(chatList[i].display,'<span style="color: blue;">' +chatList[i].sender+"："+chatList[i].body+ '</span>');
+                                    }
+                                }
+                            break;
+                            case 4: //系统
+                                var stype = msg.data.system.type;
+                                if(stype == 1){
+                                    showScreen(msg.data.system.receiver,'<span style="color: red;">系统消息:['+msg.data.system.body+']下线了</span>');
+                                }else{
+                                    showScreen(msg.data.system.receiver,'<span style="color: red;">系统消息:['+msg.data.system.body+']退出了本房间</span>');
+                                    console.log(msg.data.system.body+"...退出了");
+                                }
+                            break;
+                            default:
+                        }
+               });
+
+           }
+
+      };
+
+      function onOpen(evt) {
+          $("#userState").text(user+"-----在线");
+          $("#connected").fadeIn('slow');
+          $("#content").fadeIn('slow');
+      };
+
+      function onClose(evt) {
+          showScreen('<span style="color: red;">DISCONNECTED </span>');
+      };
+
+      function onError(evt) {
+          showScreen('<span style="color: red;">ERROR: ' + evt.data+ '</span>');
+      };
+
+      function showScreen(divId,txt) {
+          $('#'+divId).append('<p>' + txt + '</p>');
+          $('#'+divId).scrollTop($('#'+divId)[0].scrollHeight);
+      };
+
+
+    //读取Cookie的方法
+    function getCookie(key){
+            var arr1 = document.cookie.split('; ');
+            for(var i=0;i<arr1.length;i++){
+                    var arr2 = arr1[i].split('=');
+                    if(arr2[0] == key){
+                            return decodeURI(arr2[1]);
+                    }
+            }
+    }
+
+    function atToMe(obj){
+       var toOne = $(obj).text();
+       $("#toOne").val("@"+toOne);
+       $("#userOutPut div").each(function(i){
+            $(this).hide();
+       });
+       $("#groupOutPut div").each(function(i){
+            $(this).hide();
+       });
+       $("#"+toOne).show();
+       $("#groupInfo").hide(500);
+         var toHe = $("#toOne").val();
+         var temp;
+         if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            var showWindow = "";
+            var type = "";
+            parentId = $("#"+temp).parent().attr("id");
+            if(parentId == "groupOutPut"){
+                  if(document.getElementById("groupInfo").display != "block"){
+                      sendFlushGroupUserMsg(temp);
+                      var count = $("#"+temp).attr("name");
+                      if(count == "0"){
+                        loadChatHistory(temp);
+                         $("#"+temp).attr("name","1");
+                      }
+                      $("#groupInfo").show(500);
+                  }
+            }
+         }
+    }
+
+    function flushUserList(users){
+        userList = users.split(",");
+        $("#userList").empty();
+        $("#userOutPut").empty();
+        $("#selectUser").empty();
+        $("#selectUserList").empty();
+        for(var i=0;i<userList.length;i++){
+            $("#userList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+userList[i]+'</a></li>');
+            $("#userOutPut").append('<div style="display:none" id="'+userList[i]+'">====>>>'+userList[i]+'</div>');
+            $("#selectUserList").append('<option value='+userList[i]+'>'+userList[i]+'</option>');
+        }
+    }
+
+    function flushGroupList(groups){
+        groupList = groups.split(",");
+        //$("#groupList").empty();
+        //$("#groupOutPut").empty();
+        for(var i=0;i<groupList.length;i++){
+            if( $("#groupList li:contains('"+groupList[i]+"')").text() == "" ){
+                $("#groupList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+groupList[i]+'</a></li>');
+                $("#groupOutPut").append('<div name="0" style="display:none" id="'+groupList[i]+'">====>>>'+groupList[i]+'</div>');
+            }
+        }
+        //清掉多余的
+        var divArr = $("#groupOutPut div");
+        for(var i=0;i<divArr.length;i++){
+            if($.inArray(divArr[i].id,groupList) == -1){
+                $(divArr[i]).remove();
+                $("#groupList li:contains('"+divArr[i].id+"')").remove();
+            }
+        }
+    }
+
+    function flushGroupUserList(groupUsers){
+        groupUsers = groupUsers.split(",");
+        $("#groupUserList").empty();
+        for(var i=0;i<groupUsers.length;i++){
+            $("#groupUserList").append('<li>&nbsp;'+groupUsers[i]+'</li>');
+        }
+    }
+
+    function cleanOne(obj){
+        $(obj).val("");
+    }
+
+    // 创建群
+    function createGroup(){
+        var groupName = prompt("请输入群名字","");
+          if(groupName){
+               protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:1,rname:groupName,body:user}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+                 });
+
+          }else{
+             return false;
+          }
+    }
+
+    // 拉人进群
+    function addUserToGroup(){
+         var toHe = $("#toOne").val();
+         var temp;
+         var member = $("#selectUserList").val();
+         if(member != ""){
+            if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:2,rname:temp,body:member}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+                         sendFlushGroupUserMsg(temp);
+            });
+            }
+         }
+    }
+
+    //发送 刷新群成员的消息
+    function sendFlushGroupUserMsg(groupName){
+        protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:5,rname:groupName}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+         });
+    }
+
+    //加载群聊天记录
+    function loadChatHistory(groupName){
+        protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:6,rname:groupName}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+         });
+    }
+
+    //用户注销
+    function signOut(){
+        protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:2,data:{online:{type:1,body:user}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+                         var hrefArr = document.location.href.split("/");
+                         document.location.href = hrefArr[0] + "//" + hrefArr[2] + "/login";
+        });
+    }
+
+    //退出本群
+    function exitThisGroup(){
+         var toHe = $("#toOne").val();
+         var temp;
+         if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:3,rname:temp,body:user}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+                         var thisWin = $("#userList li").last().text();
+                         atToMe($("#userList li:contains('"+user+"')"));
+            });
+         }
+    }
+
+    </script>
+</head>
+
+<body>
+<div id="header">
+    <h2>聊天小窗口</h2>
+    <span id="userState" style="color: green;">-----</span>
+    <button onclick="signOut()">注销</button>
+    <div id="status"></div>
+</div>
+
+
+<div id="navigation">
+    <p id="connecting">
+        <input type='hidden' id="server" value="">
+    </p>
+    <div style="float:left;margin-right:5px;">
+        <div id="userListdiv">
+            <span>用户列表</span>
+            <ol id="userList">
+            </ol>
+        </div>
+        <div id="groupListdiv" >
+            <span>群列表&nbsp;&nbsp;<button onclick="createGroup()">创建群聊</button></span>
+            <ol id="groupList">
+
+            </ol>
+        </div>
+    </div>
+    <div id="content" style="overflow:scroll;height:400px;width:800px;float:left;margin-left:70px;">
+        <span>消息记录</span>
+        <div id="userOutPut"></div>
+        <div id="groupOutPut"></div>
+    </div>
+    <div style="height:380px;width:200px;float:left;border:3px solid #DCDCDC;display:none;border-left:0px" id="groupInfo">
+        <div style="margin-top:10px;margin-left:25px">
+            <button>解散本群</button>
+            <button onclick="exitThisGroup()">退出本群</button>
+            <div style="margin-top:10px;margin-left:0px">
+                <select style="width:70px" id="selectUserList" value="">
+
+                </select>
+                <button onclick="addUserToGroup()">拉人进群</button>
+            </div>
+        </div>
+        <hr>
+        <div style="margin-top:10px;margin-left:25px">
+            <span>群成员(仅显示在线)</span>
+            <ol style="color:#0000EE" id="groupUserList">
+
+            </ol>
+        </div>
+    </div>
+    <div style="clear:both"></div>
+    <div id="connected" style="margin-left:620px">
+        <p> <input type='text' id="toOne" value="" style="width:60px;cursor:pointer" readonly>
+            <input type='text' id="send_txt" value="">
+            <button type="button" onclick="sendTxt();">发送</button>
+        </p>
+    </div>
+</div>
+</body>
+</html>

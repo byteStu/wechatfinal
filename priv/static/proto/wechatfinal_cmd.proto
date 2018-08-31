@@ -1,0 +1,65 @@
+package wechat;
+
+enum cmd {
+   chat  = 1;
+   online = 2;
+   room = 3;
+   system = 4;
+
+}
+
+enum pattern{
+    private = 1;
+    public = 2;
+}
+
+enum room_type{
+    create = 1;
+    add = 2;
+    remove = 3;
+    drop = 4;
+    flush = 5;
+    history = 6;
+}
+
+message chat{
+    required string sender = 1;
+    required string body = 2;
+    required string receiver = 3;
+    optional sint64 timer = 4;
+    required string display = 5;
+    optional pattern type = 6;
+}
+
+message online{
+    required pattern type = 1;
+    optional string body = 2;
+}
+
+message room{
+    required room_type type = 1;
+    optional string rname = 2;
+    optional string body = 3;
+    repeated chat  history = 4;
+}
+
+message system{
+    required pattern type = 1;
+    required string receiver = 2;
+    required string body = 3;
+}
+
+
+message data{
+    optional chat chat = 1;
+    optional online online = 2;
+    optional room room = 3;
+    optional system system = 4;
+}
+
+
+message msg{
+    required cmd type = 1;
+    required data data = 2;
+}
+
