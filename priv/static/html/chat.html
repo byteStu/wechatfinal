@@ -79,7 +79,7 @@
                              var msg = Msg.create({type:1,data:{chat:{sender:user,body:txt,receiver:temp,timer:timestamp,display:showWindow,type:type}}});
 			                 var encodedObj = Msg.encode(msg).finish();
                              websocket.send(encodedObj);
-                             showScreen(temp,user+"：" + txt);
+                             showScreen(temp,'<span style="float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+txt+'：'+ user+'</span><br>');
                         }
            });
       };
@@ -101,15 +101,25 @@
                                 var showTag = msg.data.chat.display;
                                 var sender = msg.data.chat.sender;
                                 var content = msg.data.chat.body;
-                                showScreen(showTag,'<span style="color: blue;">' +sender+"："+content+ '</span>');
+                                var unread = msg.data.chat.unread;
+                                var tag = "";
+                                if(unread == "true"){
+                                    tag = "(离线消息)";
+                                }
+                                showScreen(showTag,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
                             break;
                             case 2: //在线 用户列表，群列表更新
-                                var data = msg.data.online.body;
-                                if(data != ""){
-                                    if( msg.data.online.type == 1){
-                                         flushUserList(data);
+                                var data =  msg.data.online.body;
+                                var onlineArr = msg.data.online.online;
+                                var offlineArr = msg.data.online.offline;
+                                if( msg.data.online.type == 1){
+                                     flushUserList(onlineArr,offlineArr);
+                                }else{
+                                    if(data != ""){
+                                        flushGroupList(data);
                                     }else{
-                                         flushGroupList(data);
+                                        $("#groupList").empty();
+                                        $("#groupOutPut").empty();
                                     }
                                 }
                             break;
@@ -124,7 +134,23 @@
                                     var chatList = msg.data.room.history;
                                     console.log("聊天记录"+chatList);
                                     for(var i=0;i<chatList.length;i++){
-                                        showScreen(chatList[i].display,'<span style="color: blue;">' +chatList[i].sender+"："+chatList[i].body+ '</span>');
+                                        var display = chatList[i].display;
+                                        var sender = chatList[i].sender;
+                                        var content = chatList[i].body;
+                                        var unread = chatList[i].unread;
+
+                                        var tag = "";
+                                        if(unread == "true"){
+                                            tag = "(离线消息)";
+                                        }
+                                        if(sender == user){
+                                            showScreenPre(display,'<span style="color: blue;float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+content+'：'+ sender+'</span><br>');
+                                        }else{
+                                            showScreenPre(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
+                                        }
+                                    }
+                                    if($("span:contains('(离线消息)')").length>0){
+                                         timer = setInterval("timerTask()",1000);
                                     }
                                 }
                             break;
@@ -136,6 +162,28 @@
                                     showScreen(msg.data.system.receiver,'<span style="color: red;">系统消息:['+msg.data.system.body+']退出了本房间</span>');
                                     console.log(msg.data.system.body+"...退出了");
                                 }
+                            break;
+                            case 5:
+                                    var chatList = msg.data.history.history;
+                                    for(var i=0;i<chatList.length;i++){
+                                        var display = chatList[i].display;
+                                        var sender = chatList[i].sender;
+                                        var content = chatList[i].body;
+                                        var unread = chatList[i].unread;
+
+                                        var tag = "";
+                                        if(unread == "true"){
+                                            tag = "(离线消息)";
+                                        }
+                                        if(sender == user){
+                                            showScreenPre(display,'<span style="color: blue;float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+content+'：'+ sender+'</span><br>');
+                                        }else{
+                                            showScreenPre(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
+                                        }
+                                    }
+                                    if($("span:contains('(离线消息)')").length>0){
+                                         timer = setInterval("timerTask()",1000);
+                                    }
                             break;
                             default:
                         }
@@ -164,6 +212,12 @@
           $('#content').scrollTop($('#'+divId)[0].scrollHeight);
       };
 
+      function showScreenPre(divId,txt) {
+          $('#'+divId).prepend('<p style="display:none">' + txt + '</p>');
+          $('#'+divId+' p').show(500);
+          $('#content').scrollTop(0);
+      };
+
 
     //读取Cookie的方法
     function getCookie(key){
@@ -176,6 +230,7 @@
             }
     }
 
+    var timer;
     function atToMe(obj){
        var toOne = $(obj).text();
        $("#toOne").val("@"+toOne);
@@ -186,7 +241,7 @@
             $(this).hide();
        });
        $("#"+toOne).show();
-       $("#groupInfo").hide(500);
+       $("#groupInfo").hide(100);
          var toHe = $("#toOne").val();
          var temp;
          if(toHe != ""){
@@ -200,36 +255,52 @@
                       sendFlushGroupUserMsg(temp);
                       var count = $("#"+temp).attr("name");
                       if(count == "0"){
-                        loadChatHistory(temp);
-                         $("#"+temp).attr("name","1");
+                         loadChatHistory(temp);
                       }
                       $("#groupInfo").show(500);
                   }
+            }else{
+              var count = $("#"+temp).attr("name");
+              if(count == "0"){
+                 loadChatHistory2(temp);
+              }
             }
          }
     }
 
-    function flushUserList(users){
-        userList = users.split(",");
+    function timerTask(){
+        var tempArr = $("span:contains('(离线消息)')");
+        if(tempArr.length>0){
+            console.log("定时任务:"+tempArr.length);
+            $("span:contains('(离线消息)')").last().text("");
+        }else{
+            timer = window.clearInterval(timer);
+        }
+    }
+
+    function flushUserList(onlineArr,offlineArr){
         $("#userList").empty();
         $("#userOutPut").empty();
         $("#selectUser").empty();
         $("#selectUserList").empty();
-        for(var i=0;i<userList.length;i++){
-            $("#userList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+userList[i]+'</a></li>');
-            $("#userOutPut").append('<div style="display:none" id="'+userList[i]+'">====>>>'+userList[i]+'</div>');
-            $("#selectUserList").append('<option value='+userList[i]+'>'+userList[i]+'</option>');
+        console.log("onlineArr::"+onlineArr);
+        for(var i=0;i<onlineArr.length;i++){
+            $("#userList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+onlineArr[i]+'</a></li>');
+            $("#userOutPut").append('<div name="0" style="display:none" id="'+onlineArr[i]+'">====>>>'+onlineArr[i]+'(历史记录↑↑↑)</div>');
+            $("#selectUserList").append('<option value='+onlineArr[i]+'>'+onlineArr[i]+'</option>');
+        }
+        for(var i=0;i<offlineArr.length;i++){
+             $("#userList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)" style="color:#C1C1C1">'+offlineArr[i]+'</a></li>');
+             $("#userOutPut").append('<div name="0" style="display:none" id="'+offlineArr[i]+'">====>>>'+offlineArr[i]+'(历史记录↑↑↑)</div>');
         }
     }
 
     function flushGroupList(groups){
         groupList = groups.split(",");
-        //$("#groupList").empty();
-        //$("#groupOutPut").empty();
         for(var i=0;i<groupList.length;i++){
             if( $("#groupList li:contains('"+groupList[i]+"')").text() == "" ){
                 $("#groupList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+groupList[i]+'</a></li>');
-                $("#groupOutPut").append('<div name="0" style="display:none" id="'+groupList[i]+'">====>>>'+groupList[i]+'</div>');
+                $("#groupOutPut").append('<div name="0" style="display:none" id="'+groupList[i]+'">====>>>'+groupList[i]+'(历史记录↑↑↑)</div>');
             }
         }
         //清掉多余的
@@ -308,11 +379,29 @@
 
     //加载群聊天记录
     function loadChatHistory(groupName){
+        var num = $("#"+groupName).attr("name");
+        num = parseInt(num)+1;
+        $("#"+groupName).attr("name",num+"");
         protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
                         if (err)
                             throw err;
                          var Msg = root.lookup("wechat.msg");
-                         var msg = Msg.create({type:3,data:{room:{type:6,rname:groupName}}});
+                         var msg = Msg.create({type:3,data:{room:{type:6,rname:groupName,body:num+""}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+         });
+    }
+
+    //加载私聊的聊天记录
+    function  loadChatHistory2(receiver){
+        var num = $("#"+receiver).attr("name");
+        num = parseInt(num)+1;
+        $("#"+receiver).attr("name",num+"");
+        protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:5,data:{history:{sender:user,receiver:receiver,pageNum:num}}});
                          var encodedObj = Msg.encode(msg).finish();
                          websocket.send(encodedObj);
          });
@@ -352,7 +441,47 @@
          }
     }
 
+    //解散本群
+    function dropThisGroup(){
+        var toHe = $("#toOne").val();
+         var temp;
+         if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:4,rname:temp,body:user}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+                         var thisWin = $("#userList li").last().text();
+                         atToMe($("#userList li:contains('"+user+"')"));
+            });
+         }
+    }
+
+    function loadMore(){
+         var toHe = $("#toOne").val();
+         var temp;
+         if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            parentId = $("#"+temp).parent().attr("id");
+            if(parentId == "groupOutPut"){
+               loadChatHistory(temp);
+            }else{
+               loadChatHistory2(temp);
+            }
+         }
+    }
+
     </script>
+    <style>
+		.loadMoreClass:hover{
+			color: red !important;
+		}
+	</style>
 </head>
 
 <body>
@@ -382,13 +511,13 @@
         </div>
     </div>
     <div id="content" style="overflow:scroll;height:400px;width:800px;float:left;margin-left:70px;">
-        <span>消息记录</span>
+        <span>消息记录<span style="cursor:pointer;color:blue;margin-left:280px" onclick="loadMore()" class="loadMoreClass">↑↑↑加载更多...</span></span>
         <div id="userOutPut"></div>
         <div id="groupOutPut"></div>
     </div>
     <div style="height:380px;width:200px;float:left;border:3px solid #DCDCDC;display:none;border-left:0px" id="groupInfo">
         <div style="margin-top:10px;margin-left:25px">
-            <button>解散本群</button>
+            <button onclick="dropThisGroup()">解散本群</button>
             <button onclick="exitThisGroup()">退出本群</button>
             <div style="margin-top:10px;margin-left:0px">
                 <select style="width:70px" id="selectUserList" value="">

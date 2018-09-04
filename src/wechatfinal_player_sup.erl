@@ -24,15 +24,17 @@
 %%%===================================================================
 %% @doc 创建玩家进程
 -spec start_child(Player::atom()) -> term().
-start_child(Player) ->
-	ChildSpec = {Player,{wechatfinal_player_wk,start_link,[Player]},permanent,5000,worker,[wechatfinal_player_wk]},
-	supervisor:start_child(?SERVER,ChildSpec).
+start_child(Player) ->%%brutal_kill
+	ChildSpec = {Player,{wechatfinal_player_wk,start_link,[Player]},permanent,brutal_kill,worker,[wechatfinal_player_wk]},
+	supervisor:start_child(?SERVER,ChildSpec),
+	io:format("[~p]进程已启动....~n",[Player]).
 
 %% @doc 关闭玩家进程
 -spec stop_child(Player::atom()) ->term().
 stop_child(Player) ->
 	supervisor:terminate_child(?SERVER,Player),
-	supervisor:delete_child(?SERVER,Player).
+	supervisor:delete_child(?SERVER,Player),
+	io:format("当前在线：~p~n",[supervisor:which_children(?SERVER)]).
 
 %% @doc 返回子节点名字列表
 -spec get_child_name() -> list().

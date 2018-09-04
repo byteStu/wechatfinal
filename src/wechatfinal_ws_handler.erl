@@ -27,6 +27,8 @@ websocket_init(State) ->
 	%% 广播一下
 	wechatfinal_broadcast_wk:send_online_msg(),
 	wechatfinal_broadcast_wk:send_room_msg(),
+	wechatfinal_broadcast_wk:send_online_user_to_room(UserNameAtom),
+	
 	{ok, State}.
 
 websocket_handle({binary, Msg}, State) ->
@@ -37,11 +39,13 @@ websocket_handle({binary, Msg}, State) ->
 				NewSender = wechatfinal_util:get_wk_name(Sender),
 				wechatfinal_player_wk:send_msg(NewSender,Decode);
 		online -> io:format("在线消息~n"),
-			       wechatfinal_player_wk:sign_out(binary_to_atom(Decode#msg.data#data.online#online.body,utf8));
+			       wechatfinal_player_wk:sign_out(wechatfinal_util:get_wk_name(binary_to_atom(Decode#msg.data#data.online#online.body,utf8)));
 		room -> io:format("房间消息~n"),
 			{_,Sender} = erlang:process_info(self(), registered_name),
 				wechatfinal_room_wk:handle_room(Sender,Decode);
 		system -> io:format("系统消息~n");
+		history -> io:format("私人聊天记录~n"),
+				   wechatfinal_player_wk:load_private_chat_history(Decode);
 		_ -> ok
 	end,
 	{ok, State}.
@@ -49,7 +53,8 @@ websocket_handle({binary, Msg}, State) ->
 websocket_info({timeout, _Ref, _Msg}, State) ->
 	{ok, State};
 websocket_info({resp_msg,Msg}, State) ->
-	io:format("resp_msg被调用了~n"),
+	%%io:format("resp_msg被调用了~n"),
+	%%io:format("resp_msg,Msg:~p~n",[wechatfinal_cmd_pb:decode_msg(Msg,msg)]),
 	{reply,{binary,Msg},State};
 websocket_info({stop_conn}, State) ->
 	io:format("stop_conn被调用了~n"),

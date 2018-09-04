@@ -122,17 +122,23 @@ handle_call(_Request, _From, State) ->
 handle_cast({send_online_msg}, State) ->
 	%% 获得在线用户列表
 	UserList = wechatfinal_player_wk:get_online_player(),
-	NewUserList = [wechatfinal_util:get_ws_name(X)||X <- UserList],
-	UserListBinary = wechatfinal_util:atomList_join_to_binary(NewUserList),
-	Msg = #msg{type = online,data = #data{online = #online{type = private,body = UserListBinary}}},
+	OnlineUsers = [wechatfinal_util:get_ws_name(X)||X <- UserList],
+	UserListBinary = wechatfinal_util:atomList_join_to_binary(OnlineUsers),
+	Usernames = wechatfinal_mnesia:q_all_usernames(),
+	
+	OnlineUsersBinary = [atom_to_binary(X,utf8)|| X <- OnlineUsers],
+	OfflineUsersBinary = Usernames -- OnlineUsersBinary,
+	
+	Msg = #msg{type = online,data = #data{online = #online{type = private,body = UserListBinary,online = OnlineUsersBinary, offline = OfflineUsersBinary}}},
 	MsgEncode = wechatfinal_cmd_pb:encode_msg(Msg),
-	[X ! {send_online_msg,MsgEncode} ||X <- UserList],
+	[X ! {send_online_msg,MsgEncode} ||X <- UserList,whereis(X) =/= undefined],
 	{noreply, State};
 
 %% @doc 推送房间消息
 handle_cast({send_room_msg}, State) ->
 	%% 获得在线用户列表
 	UserList = wechatfinal_player_wk:get_online_player(),
+	io:format("当前在线用户:~p~n",[UserList]),
 	%% 处理消息推送
 	do_send_room_msg(UserList),
 	{noreply, State};
@@ -198,9 +204,12 @@ do_send_room_msg([]) ->
 do_send_room_msg([UserAtom|T]) ->
 	NewUserAtom = wechatfinal_util:get_ws_name(UserAtom),
 	RoomList = wechatfinal_mnesia:q_all_groups_by_uname(NewUserAtom),
-	io:format("~p的群列表为：~p~n",[NewUserAtom,RoomList]),
+	
 	RoomListBinary = wechatfinal_util:atomList_join_to_binary(RoomList),
 	Msg = #msg{type = online,data = #data{online = #online{type = public,body = RoomListBinary}}},
 	MsgEncode = wechatfinal_cmd_pb:encode_msg(Msg),
-	UserAtom !  {send_online_msg,MsgEncode},
+	case whereis(UserAtom) of
+		  undefined ->ok;
+		  _ -> UserAtom !  {send_online_msg,MsgEncode}
+	end,
 	do_send_room_msg(T).

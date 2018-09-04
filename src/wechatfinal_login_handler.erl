@@ -44,7 +44,6 @@ echo({reponse,_Echo}, Req) ->
 check_login(UserName,Pasword,Req) when is_binary(UserName),is_binary(Pasword)->
     try
         [P|_] = wechatfinal_mnesia:q_users_password(UserName),
-        io:format("密码:~p~n",[P]),
         if
             Pasword =:= P-> Token = wechatfinal_util:create_token(),
                             io:format("login_handler里面的Token:~p~n",[Token]),

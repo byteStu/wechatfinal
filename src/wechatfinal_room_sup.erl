@@ -25,7 +25,7 @@
 %% @doc 开房
 -spec start_child(RoomNameAtom::atom()) -> term().
 start_child(RoomNameAtom) ->
-	ChildSpec = {RoomNameAtom,{wechatfinal_room_wk,start_link,[RoomNameAtom]},permanent,5000,worker,[wechatfinal_room_wk]},
+	ChildSpec = {RoomNameAtom,{wechatfinal_room_wk,start_link,[RoomNameAtom]},permanent,brutal_kill,worker,[wechatfinal_room_wk]},
 	supervisor:start_child(?SERVER,ChildSpec).
 
 %% @doc 关房
