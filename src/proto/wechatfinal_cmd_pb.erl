@@ -113,18 +113,31 @@ e_msg_online(Msg, TrUserData) ->
     e_msg_online(Msg, <<>>, TrUserData).
 
 
-e_msg_online(#online{type = F1, body = F2}, Bin,
-	     TrUserData) ->
+e_msg_online(#online{type = F1, body = F2, online = F3,
+		     offline = F4},
+	     Bin, TrUserData) ->
     B1 = begin
 	   TrF1 = id(F1, TrUserData),
 	   e_enum_pattern(TrF1, <<Bin/binary, 8>>)
 	 end,
-    if F2 == undefined -> B1;
-       true ->
-	   begin
-	     TrF2 = id(F2, TrUserData),
-	     e_type_string(TrF2, <<B1/binary, 18>>)
+    B2 = if F2 == undefined -> B1;
+	    true ->
+		begin
+		  TrF2 = id(F2, TrUserData),
+		  e_type_string(TrF2, <<B1/binary, 18>>)
+		end
+	 end,
+    B3 = begin
+	   TrF3 = id(F3, TrUserData),
+	   if TrF3 == [] -> B2;
+	      true -> e_field_online_online(TrF3, B2, TrUserData)
 	   end
+	 end,
+    begin
+      TrF4 = id(F4, TrUserData),
+      if TrF4 == [] -> B3;
+	 true -> e_field_online_offline(TrF4, B3, TrUserData)
+      end
     end.
 
 e_msg_room(Msg, TrUserData) ->
@@ -281,6 +294,19 @@ e_msg_msg(#msg{type = F1, data = F2}, Bin,
       TrF2 = id(F2, TrUserData),
       e_mfield_msg_data(TrF2, <<B1/binary, 18>>, TrUserData)
     end.
+
+e_field_online_online([Elem | Rest], Bin, TrUserData) ->
+    Bin2 = <<Bin/binary, 26>>,
+    Bin3 = e_type_string(id(Elem, TrUserData), Bin2),
+    e_field_online_online(Rest, Bin3, TrUserData);
+e_field_online_online([], Bin, _TrUserData) -> Bin.
+
+e_field_online_offline([Elem | Rest], Bin,
+		       TrUserData) ->
+    Bin2 = <<Bin/binary, 34>>,
+    Bin3 = e_type_string(id(Elem, TrUserData), Bin2),
+    e_field_online_offline(Rest, Bin3, TrUserData);
+e_field_online_offline([], Bin, _TrUserData) -> Bin.
 
 e_mfield_room_history(Msg, Bin, TrUserData) ->
     SubBin = e_msg_chat(Msg, <<>>, TrUserData),
@@ -675,60 +701,88 @@ skip_64_chat(<<_:64, Rest/binary>>, Z1, Z2, F@_1, F@_2,
 d_msg_online(Bin, TrUserData) ->
     dfp_read_field_def_online(Bin, 0, 0,
 			      id(undefined, TrUserData),
-			      id(undefined, TrUserData), TrUserData).
+			      id(undefined, TrUserData), id([], TrUserData),
+			      id([], TrUserData), TrUserData).
 
 dfp_read_field_def_online(<<8, Rest/binary>>, Z1, Z2,
-			  F@_1, F@_2, TrUserData) ->
-    d_field_online_type(Rest, Z1, Z2, F@_1, F@_2,
-			TrUserData);
+			  F@_1, F@_2, F@_3, F@_4, TrUserData) ->
+    d_field_online_type(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			F@_4, TrUserData);
 dfp_read_field_def_online(<<18, Rest/binary>>, Z1, Z2,
-			  F@_1, F@_2, TrUserData) ->
-    d_field_online_body(Rest, Z1, Z2, F@_1, F@_2,
-			TrUserData);
-dfp_read_field_def_online(<<>>, 0, 0, F@_1, F@_2, _) ->
-    #online{type = F@_1, body = F@_2};
+			  F@_1, F@_2, F@_3, F@_4, TrUserData) ->
+    d_field_online_body(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			F@_4, TrUserData);
+dfp_read_field_def_online(<<26, Rest/binary>>, Z1, Z2,
+			  F@_1, F@_2, F@_3, F@_4, TrUserData) ->
+    d_field_online_online(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			  F@_4, TrUserData);
+dfp_read_field_def_online(<<34, Rest/binary>>, Z1, Z2,
+			  F@_1, F@_2, F@_3, F@_4, TrUserData) ->
+    d_field_online_offline(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			   F@_4, TrUserData);
+dfp_read_field_def_online(<<>>, 0, 0, F@_1, F@_2, R1,
+			  R2, TrUserData) ->
+    #online{type = F@_1, body = F@_2,
+	    online = lists_reverse(R1, TrUserData),
+	    offline = lists_reverse(R2, TrUserData)};
 dfp_read_field_def_online(Other, Z1, Z2, F@_1, F@_2,
-			  TrUserData) ->
+			  F@_3, F@_4, TrUserData) ->
     dg_read_field_def_online(Other, Z1, Z2, F@_1, F@_2,
-			     TrUserData).
+			     F@_3, F@_4, TrUserData).
 
 dg_read_field_def_online(<<1:1, X:7, Rest/binary>>, N,
-			 Acc, F@_1, F@_2, TrUserData)
+			 Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 32 - 7 ->
     dg_read_field_def_online(Rest, N + 7, X bsl N + Acc,
-			     F@_1, F@_2, TrUserData);
+			     F@_1, F@_2, F@_3, F@_4, TrUserData);
 dg_read_field_def_online(<<0:1, X:7, Rest/binary>>, N,
-			 Acc, F@_1, F@_2, TrUserData) ->
+			 Acc, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
       8 ->
-	  d_field_online_type(Rest, 0, 0, F@_1, F@_2, TrUserData);
+	  d_field_online_type(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
+			      TrUserData);
       18 ->
-	  d_field_online_body(Rest, 0, 0, F@_1, F@_2, TrUserData);
+	  d_field_online_body(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
+			      TrUserData);
+      26 ->
+	  d_field_online_online(Rest, 0, 0, F@_1, F@_2, F@_3,
+				F@_4, TrUserData);
+      34 ->
+	  d_field_online_offline(Rest, 0, 0, F@_1, F@_2, F@_3,
+				 F@_4, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 ->
-		skip_varint_online(Rest, 0, 0, F@_1, F@_2, TrUserData);
-	    1 -> skip_64_online(Rest, 0, 0, F@_1, F@_2, TrUserData);
+		skip_varint_online(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
+				   TrUserData);
+	    1 ->
+		skip_64_online(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
+			       TrUserData);
 	    2 ->
 		skip_length_delimited_online(Rest, 0, 0, F@_1, F@_2,
-					     TrUserData);
+					     F@_3, F@_4, TrUserData);
 	    3 ->
-		skip_group_online(Rest, Key bsr 3, 0, F@_1, F@_2,
-				  TrUserData);
-	    5 -> skip_32_online(Rest, 0, 0, F@_1, F@_2, TrUserData)
+		skip_group_online(Rest, Key bsr 3, 0, F@_1, F@_2, F@_3,
+				  F@_4, TrUserData);
+	    5 ->
+		skip_32_online(Rest, 0, 0, F@_1, F@_2, F@_3, F@_4,
+			       TrUserData)
 	  end
     end;
-dg_read_field_def_online(<<>>, 0, 0, F@_1, F@_2, _) ->
-    #online{type = F@_1, body = F@_2}.
+dg_read_field_def_online(<<>>, 0, 0, F@_1, F@_2, R1, R2,
+			 TrUserData) ->
+    #online{type = F@_1, body = F@_2,
+	    online = lists_reverse(R1, TrUserData),
+	    offline = lists_reverse(R2, TrUserData)}.
 
 d_field_online_type(<<1:1, X:7, Rest/binary>>, N, Acc,
-		    F@_1, F@_2, TrUserData)
+		    F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_online_type(Rest, N + 7, X bsl N + Acc, F@_1,
-			F@_2, TrUserData);
+			F@_2, F@_3, F@_4, TrUserData);
 d_field_online_type(<<0:1, X:7, Rest/binary>>, N, Acc,
-		    _, F@_2, TrUserData) ->
+		    _, F@_2, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = {d_enum_pattern(begin
 					   <<Res:32/signed-native>> = <<(X bsl N
 									   +
@@ -737,59 +791,90 @@ d_field_online_type(<<0:1, X:7, Rest/binary>>, N, Acc,
 					 end),
 			  Rest},
     dfp_read_field_def_online(RestF, 0, 0, NewFValue, F@_2,
-			      TrUserData).
+			      F@_3, F@_4, TrUserData).
 
 d_field_online_body(<<1:1, X:7, Rest/binary>>, N, Acc,
-		    F@_1, F@_2, TrUserData)
+		    F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_online_body(Rest, N + 7, X bsl N + Acc, F@_1,
-			F@_2, TrUserData);
+			F@_2, F@_3, F@_4, TrUserData);
 d_field_online_body(<<0:1, X:7, Rest/binary>>, N, Acc,
-		    F@_1, _, TrUserData) ->
+		    F@_1, _, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_online(RestF, 0, 0, F@_1, NewFValue,
+			      F@_3, F@_4, TrUserData).
+
+d_field_online_online(<<1:1, X:7, Rest/binary>>, N, Acc,
+		      F@_1, F@_2, F@_3, F@_4, TrUserData)
+    when N < 57 ->
+    d_field_online_online(Rest, N + 7, X bsl N + Acc, F@_1,
+			  F@_2, F@_3, F@_4, TrUserData);
+d_field_online_online(<<0:1, X:7, Rest/binary>>, N, Acc,
+		      F@_1, F@_2, Prev, F@_4, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {binary:copy(Bytes), Rest2}
+			 end,
+    dfp_read_field_def_online(RestF, 0, 0, F@_1, F@_2,
+			      cons(NewFValue, Prev, TrUserData), F@_4,
 			      TrUserData).
+
+d_field_online_offline(<<1:1, X:7, Rest/binary>>, N,
+		       Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
+    when N < 57 ->
+    d_field_online_offline(Rest, N + 7, X bsl N + Acc, F@_1,
+			   F@_2, F@_3, F@_4, TrUserData);
+d_field_online_offline(<<0:1, X:7, Rest/binary>>, N,
+		       Acc, F@_1, F@_2, F@_3, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {binary:copy(Bytes), Rest2}
+			 end,
+    dfp_read_field_def_online(RestF, 0, 0, F@_1, F@_2, F@_3,
+			      cons(NewFValue, Prev, TrUserData), TrUserData).
 
 skip_varint_online(<<1:1, _:7, Rest/binary>>, Z1, Z2,
-		   F@_1, F@_2, TrUserData) ->
-    skip_varint_online(Rest, Z1, Z2, F@_1, F@_2,
+		   F@_1, F@_2, F@_3, F@_4, TrUserData) ->
+    skip_varint_online(Rest, Z1, Z2, F@_1, F@_2, F@_3, F@_4,
 		       TrUserData);
 skip_varint_online(<<0:1, _:7, Rest/binary>>, Z1, Z2,
-		   F@_1, F@_2, TrUserData) ->
+		   F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_online(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData).
+			      F@_3, F@_4, TrUserData).
 
 skip_length_delimited_online(<<1:1, X:7, Rest/binary>>,
-			     N, Acc, F@_1, F@_2, TrUserData)
+			     N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     skip_length_delimited_online(Rest, N + 7, X bsl N + Acc,
-				 F@_1, F@_2, TrUserData);
+				 F@_1, F@_2, F@_3, F@_4, TrUserData);
 skip_length_delimited_online(<<0:1, X:7, Rest/binary>>,
-			     N, Acc, F@_1, F@_2, TrUserData) ->
+			     N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_online(Rest2, 0, 0, F@_1, F@_2,
-			      TrUserData).
+    dfp_read_field_def_online(Rest2, 0, 0, F@_1, F@_2, F@_3,
+			      F@_4, TrUserData).
 
-skip_group_online(Bin, FNum, Z2, F@_1, F@_2,
+skip_group_online(Bin, FNum, Z2, F@_1, F@_2, F@_3, F@_4,
 		  TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_online(Rest, 0, Z2, F@_1, F@_2,
-			      TrUserData).
+    dfp_read_field_def_online(Rest, 0, Z2, F@_1, F@_2, F@_3,
+			      F@_4, TrUserData).
 
 skip_32_online(<<_:32, Rest/binary>>, Z1, Z2, F@_1,
-	       F@_2, TrUserData) ->
+	       F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_online(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData).
+			      F@_3, F@_4, TrUserData).
 
 skip_64_online(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
-	       F@_2, TrUserData) ->
+	       F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_online(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData).
+			      F@_3, F@_4, TrUserData).
 
 d_msg_room(Bin, TrUserData) ->
     dfp_read_field_def_room(Bin, 0, 0,
@@ -1775,12 +1860,27 @@ merge_msg_chat(#chat{timer = PFtimer, type = PFtype,
 		 true -> NFunread
 	      end}.
 
-merge_msg_online(#online{body = PFbody},
-		 #online{type = NFtype, body = NFbody}, _) ->
+merge_msg_online(#online{body = PFbody,
+			 online = PFonline, offline = PFoffline},
+		 #online{type = NFtype, body = NFbody, online = NFonline,
+			 offline = NFoffline},
+		 TrUserData) ->
     #online{type = NFtype,
 	    body =
 		if NFbody =:= undefined -> PFbody;
 		   true -> NFbody
+		end,
+	    online =
+		if PFonline /= undefined, NFonline /= undefined ->
+		       'erlang_++'(PFonline, NFonline, TrUserData);
+		   PFonline == undefined -> NFonline;
+		   NFonline == undefined -> PFonline
+		end,
+	    offline =
+		if PFoffline /= undefined, NFoffline /= undefined ->
+		       'erlang_++'(PFoffline, NFoffline, TrUserData);
+		   PFoffline == undefined -> NFoffline;
+		   NFoffline == undefined -> PFoffline
 		end}.
 
 merge_msg_room(#room{rname = PFrname, body = PFbody,
@@ -1921,10 +2021,28 @@ v_msg_chat(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, chat}, X, Path).
 
 -dialyzer({nowarn_function,v_msg_online/3}).
-v_msg_online(#online{type = F1, body = F2}, Path, _) ->
+v_msg_online(#online{type = F1, body = F2, online = F3,
+		     offline = F4},
+	     Path, _) ->
     v_enum_pattern(F1, [type | Path]),
     if F2 == undefined -> ok;
        true -> v_type_string(F2, [body | Path])
+    end,
+    if is_list(F3) ->
+	   _ = [v_type_string(Elem, [online | Path])
+		|| Elem <- F3],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, string}, F3,
+			 [online | Path])
+    end,
+    if is_list(F4) ->
+	   _ = [v_type_string(Elem, [offline | Path])
+		|| Elem <- F4],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, string}, F4,
+			 [offline | Path])
     end,
     ok;
 v_msg_online(X, Path, _TrUserData) ->
@@ -2144,7 +2262,11 @@ get_msg_defs() ->
 	      type = {enum, pattern}, occurrence = required,
 	      opts = []},
        #field{name = body, fnum = 2, rnum = 3, type = string,
-	      occurrence = optional, opts = []}]},
+	      occurrence = optional, opts = []},
+       #field{name = online, fnum = 3, rnum = 4, type = string,
+	      occurrence = repeated, opts = []},
+       #field{name = offline, fnum = 4, rnum = 5,
+	      type = string, occurrence = repeated, opts = []}]},
      {{msg, room},
       [#field{name = type, fnum = 1, rnum = 2,
 	      type = {enum, room_type}, occurrence = required,
@@ -2243,7 +2365,11 @@ find_msg_def(online) ->
 	    type = {enum, pattern}, occurrence = required,
 	    opts = []},
      #field{name = body, fnum = 2, rnum = 3, type = string,
-	    occurrence = optional, opts = []}];
+	    occurrence = optional, opts = []},
+     #field{name = online, fnum = 3, rnum = 4, type = string,
+	    occurrence = repeated, opts = []},
+     #field{name = offline, fnum = 4, rnum = 5,
+	    type = string, occurrence = repeated, opts = []}];
 find_msg_def(room) ->
     [#field{name = type, fnum = 1, rnum = 2,
 	    type = {enum, room_type}, occurrence = required,

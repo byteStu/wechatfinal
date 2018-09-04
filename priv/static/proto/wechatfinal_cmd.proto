@@ -35,6 +35,8 @@ message chat{
 message online{
     required pattern type = 1;
     optional string body = 2;
+    repeated string online = 3;
+    repeated string offline = 4;
 }
 
 message room{

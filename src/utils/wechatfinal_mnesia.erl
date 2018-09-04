@@ -29,7 +29,9 @@
          q_msg_by_gname/1,
          q_all_groups_by_uname/1,
          q_all_members_by_gname/1,
-         update_msg/7
+         update_msg/7,
+         q_all_usernames/0,
+         q_msg_by_sr/2
          ]).
 
 -record(users,{uname,pwd}).
@@ -71,6 +73,8 @@ q_users_password(UserName) ->
     do(qlc:q([X#users.pwd || X <- mnesia:table(users),X#users.uname =:= UserName])).
 q_all_users() ->
     do(qlc:q([X || X <- mnesia:table(users)])).
+q_all_usernames() ->
+    do(qlc:q([U || #users{uname = U} <- mnesia:table(users)])).
 
 %% @doc 群表相关
 %% -record(groups,{gname,uname}).
@@ -164,6 +168,12 @@ add_msgs(Sender,Body,Receiver,MsgType,Sendtimer,OnlineUsers) ->
 -spec q_msg_by_gname(RoomName::term()) -> term().
 q_msg_by_gname(RoomName) ->
     QList = do(qlc:q([ {S,B,R,Ty,Ti,O} || #msgs{sender = S,body = B,receiver = R,msgtype = Ty,sendtimer = Ti,offline = O} <- mnesia:table(msgs),R =:= RoomName])),
+    lists:keysort(5,QList).
+
+%% @doc 查询私聊消息
+-spec q_msg_by_sr(Sender::term(),Receiver::term()) -> term().
+q_msg_by_sr(Sender,Receiver) ->
+    QList = do(qlc:q([ {S,B,R,Ty,Ti,O} || #msgs{sender = S,body = B,receiver = R,msgtype = Ty,sendtimer = Ti,offline = O} <- mnesia:table(msgs),(S =:= Sender andalso R =:= Receiver) or (S =:= Receiver andalso R =:= Sender)])),
     lists:keysort(5,QList).
 
 %% @doc 更新一条消息

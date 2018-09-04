@@ -25,14 +25,15 @@
 %% @doc 开房
 -spec start_child(RoomNameAtom::atom()) -> term().
 start_child(RoomNameAtom) ->
-	ChildSpec = {RoomNameAtom,{wechatfinal_room_wk,start_link,[RoomNameAtom]},permanent,5000,worker,[wechatfinal_room_wk]},
+	ChildSpec = {RoomNameAtom,{wechatfinal_room_wk,start_link,[RoomNameAtom]},permanent,brutal_kill,worker,[wechatfinal_room_wk]},
 	supervisor:start_child(?SERVER,ChildSpec).
 
 %% @doc 关房
 -spec stop_child(RoomNameAtom::atom()) ->term().
 stop_child(RoomNameAtom) ->
-	supervisor:terminate_child(?SERVER,RoomNameAtom),
-	supervisor:delete_child(?SERVER,RoomNameAtom).
+	Pid = whereis(RoomNameAtom),
+	supervisor:terminate_child(?SERVER,Pid),
+	supervisor:delete_child(?SERVER,Pid).
 
 %% @doc 返回子节点名字列表
 -spec get_child_name() -> list().

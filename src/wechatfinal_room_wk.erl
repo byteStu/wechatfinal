@@ -181,12 +181,12 @@ handle_call({remove_user,RoomNameAtom,UserAtom}, _From, #state{userList = UserLi
 	wechatfinal_mnesia:remove_groups(RoomNameAtom,UserAtom),
 	%% 更新State
 	NewState = State#state{userList = UserList -- [UserAtom]},
-	%% 广播一下
-	wechatfinal_broadcast_wk:send_room_msg(),
 	%% 系统消息，通知一下
 	wechatfinal_broadcast_wk:send_exit_group_user_to_room(RoomNameAtom,UserAtom),
 	%% 刷新群成员
 	erlang:send_after(1000,RoomNameAtom,{flush_room_member,RoomNameAtom}),
+	%% 广播一下
+	wechatfinal_broadcast_wk:send_room_msg(),
 	{reply, ok, NewState};
 
 %% @doc 添加用户
@@ -229,7 +229,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({flush_room_member,RoomNameAtom}, #state{userList = UserList}=State) ->
 	Msg = #msg{type = room,data = #data{room = #room{type = flush,rname = atom_to_binary(RoomNameAtom,utf8),body = wechatfinal_util:atomList_join_to_binary(UserList)}}},
 	EncodeMsg = wechatfinal_cmd_pb:encode_msg(Msg),
-	[X ! {resp_msg,EncodeMsg}||X <- UserList],
+	[X ! {resp_msg,EncodeMsg}||X <- UserList,whereis(X) =/= undefined],
 	{noreply, State};
 
 handle_cast(_Request, State) ->
@@ -266,19 +266,22 @@ handle_info({resp_msg,EncodeMsg}, #state{userList = UserList}=State) ->
 handle_info({advice_room_of_online_user,RoomAtom,UserNameAtom}, #state{userList = UserList}=State) ->
 	{_,_,Users} = wechatfinal_mnesia:q_groups(RoomAtom),
 	case lists:member(UserNameAtom,Users) of
-		 true ->UserList -- [UserNameAtom],
-			    NewUserList = UserList ++ [UserNameAtom],
-			    NewState = State#state{userList = NewUserList};
+		 true ->NewUserList1 = UserList -- [UserNameAtom],
+			    NewUserList2 = NewUserList1 ++ [UserNameAtom],
+			    NewState = State#state{userList = NewUserList2};
 		 false -> NewState = State
 	end,
 	{noreply, NewState};
 
 %% @doc 群通知，用户下线
 handle_info({advice_room_of_offline_user,RoomAtom,UserNameAtom}, #state{userList = UserList}=State) ->
-	NewUserList = UserList -- [UserNameAtom],
-	NewState = State#state{userList = NewUserList},
-	io:format("新的群成员：~p,下线的成员:~p,房间是：~p~n",[NewUserList,UserNameAtom,RoomAtom]),
-	erlang:send_after(1000,self(),{advice_client_room,{RoomAtom,UserNameAtom,private}}),
+	case lists:member(UserNameAtom,UserList) of
+		 true -> NewUserList = UserList -- [UserNameAtom],
+				 NewState = State#state{userList = NewUserList},
+				 io:format("新的群成员：~p,下线的成员:~p,房间是：~p~n",[NewUserList,UserNameAtom,RoomAtom]),
+				 erlang:send_after(1000,self(),{advice_client_room,{RoomAtom,UserNameAtom,private}});
+		 false -> NewState = State
+	end,
 	{noreply, NewState};
 
 %% @doc 当房间进程因为意外情况挂掉后，检测在线用户

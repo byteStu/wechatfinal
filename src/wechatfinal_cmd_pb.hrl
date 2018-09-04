@@ -24,7 +24,9 @@
 -define('ONLINE_PB_H', true).
 -record(online,
         {type                   :: 'private' | 'public' | integer(), % = 1, enum pattern
-         body                   :: iodata() | undefined % = 2
+         body                   :: iodata() | undefined, % = 2
+         online = []            :: [iodata()] | undefined, % = 3
+         offline = []           :: [iodata()] | undefined % = 4
         }).
 -endif.
 
