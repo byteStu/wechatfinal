@@ -82,10 +82,14 @@ remove_user_to_room(Decoder) ->
 %% @doc 销毁房间
 -spec drop_room(Decoder::term()) -> term().
 drop_room(Decoder) ->
-	RoomName = Decoder#msg.data#data.room#room.body,
+	RoomName = Decoder#msg.data#data.room#room.rname,
 	RoomNameAtom = binary_to_atom(RoomName,utf8),
 	wechatfinal_room_sup:stop_child(RoomNameAtom),
-	call(RoomNameAtom,{drop_room}).
+	%% 删除数据库 该条记录
+	wechatfinal_mnesia:drop_groups(RoomNameAtom),
+	%% 广播一下
+	wechatfinal_broadcast_wk:send_room_msg().
+	
 
 %% @doc 刷新房间成员
 -spec flush_room_member(Decoder::term()) -> term().

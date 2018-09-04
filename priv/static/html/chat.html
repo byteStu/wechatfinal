@@ -441,6 +441,26 @@
          }
     }
 
+    //解散本群
+    function dropThisGroup(){
+        var toHe = $("#toOne").val();
+         var temp;
+         if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
+                        if (err)
+                            throw err;
+                         var Msg = root.lookup("wechat.msg");
+                         var msg = Msg.create({type:3,data:{room:{type:4,rname:temp,body:user}}});
+                         var encodedObj = Msg.encode(msg).finish();
+                         websocket.send(encodedObj);
+                         var thisWin = $("#userList li").last().text();
+                         atToMe($("#userList li:contains('"+user+"')"));
+            });
+         }
+    }
+
     function loadMore(){
          var toHe = $("#toOne").val();
          var temp;
@@ -497,7 +517,7 @@
     </div>
     <div style="height:380px;width:200px;float:left;border:3px solid #DCDCDC;display:none;border-left:0px" id="groupInfo">
         <div style="margin-top:10px;margin-left:25px">
-            <button>解散本群</button>
+            <button onclick="dropThisGroup()">解散本群</button>
             <button onclick="exitThisGroup()">退出本群</button>
             <div style="margin-top:10px;margin-left:0px">
                 <select style="width:70px" id="selectUserList" value="">
