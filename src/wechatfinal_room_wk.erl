@@ -98,8 +98,11 @@ flush_room_member(Decoder) ->
 -spec load_room_chat_history(Sender::atom(),Decoder::term()) -> term().
 load_room_chat_history(Sender,Decoder) ->
 	RoomName = Decoder#msg.data#data.room#room.rname,
+	Num = Decoder#msg.data#data.room#room.body,
+	NumInt = binary_to_integer(Num),
+	
 	%%RoomNameAtom = binary_to_atom(RoomName,utf8),
-	MsgList = wechatfinal_mnesia:q_msg_by_gname(RoomName),
+	MsgList = wechatfinal_mnesia:q_msg_page(RoomName,5,NumInt),
 	NewMsgList = [#chat{sender = S,body = B,receiver = RoomName,display = RoomName,unread = atom_to_binary(lists:member(Sender,O),utf8)}||{S,B,_R,_Ty,_Ti,O} <- MsgList],
 	Msg = #msg{type = room,data = #data{room = #room{type = history,rname = RoomName,history = NewMsgList}}},
 	EncodeMsg = wechatfinal_cmd_pb:encode_msg(Msg),

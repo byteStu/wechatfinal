@@ -21,8 +21,7 @@ websocket_init(State) ->
 	WkName = wechatfinal_util:get_wk_name(UserNameAtom),
 	case erlang:whereis(WkName) =:= undefined of
 		 true  -> wechatfinal_player_wk:sign_in(WkName),
-				  wechatfinal_broadcast_wk:send_online_user_to_room(UserNameAtom),
-			      io:format("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh~n");
+				  wechatfinal_broadcast_wk:send_online_user_to_room(UserNameAtom);
 		 false -> pass
 	end,
 	%% 广播一下

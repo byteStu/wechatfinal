@@ -31,7 +31,8 @@
          q_all_members_by_gname/1,
          update_msg/7,
          q_all_usernames/0,
-         q_msg_by_sr/2
+         q_msg_by_sr/2,
+         q_msg_page/3
          ]).
 
 -record(users,{uname,pwd}).
@@ -164,7 +165,7 @@ add_msgs(Sender,Body,Receiver,MsgType,Sendtimer,OnlineUsers) ->
     F = fun() -> mnesia:write(Row) end,
     mnesia:transaction(F).
 
-%% @doc 查询聊天记录
+%% @doc 查询群聊天记录
 -spec q_msg_by_gname(RoomName::term()) -> term().
 q_msg_by_gname(RoomName) ->
     QList = do(qlc:q([ {S,B,R,Ty,Ti,O} || #msgs{sender = S,body = B,receiver = R,msgtype = Ty,sendtimer = Ti,offline = O} <- mnesia:table(msgs),R =:= RoomName])),
@@ -185,7 +186,20 @@ update_msg(Sender,Body,Receiver,MsgType,Sendtimer,Offline,CurrUser) ->
                  mnesia:write(NewMsg)
                  end,
     mnesia:transaction(F).
-    
+
+%% @doc 分页查询聊天记录
+-spec q_msg_page(RoomName::atom(),PageSize::integer(),PageNum::integer()) -> term().
+q_msg_page(RoomName,PageSize,PageNum) ->
+    F = fun() ->
+        Q = qlc:q([ {S,B,R,Ty,Ti,O} || #msgs{sender = S,body = B,receiver = R,msgtype = Ty,sendtimer = Ti,offline = O} <- mnesia:table(msgs),R =:= RoomName]),
+        QA = qlc:e(qlc:keysort(5,Q,[{order,descending}])),
+        QC = qlc:cursor(QA),
+        get_page(QC,PageSize,PageNum)
+        end,
+    {atomic, Val} = mnesia:transaction(F),
+    Val.
+
+
 
 example_tables() ->
     [
@@ -202,3 +216,11 @@ do(Q) ->
     F = fun() -> qlc:e(Q) end,
     {atomic, Val} = mnesia:transaction(F),
     Val.
+
+%% @doc 获得第几页
+%% PageSize:页面大小
+%% PageNum：第几页
+get_page(QC,PageSize,1) -> qlc:next_answers(QC,PageSize);
+get_page(QC,PageSize,PageNum) ->
+    qlc:next_answers(QC,PageSize),
+    get_page(QC,PageSize,PageNum -1).

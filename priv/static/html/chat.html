@@ -144,9 +144,9 @@
                                             tag = "(离线消息)";
                                         }
                                         if(sender == user){
-                                            showScreen(display,'<span style="color: blue;float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+content+'：'+ sender+'</span><br>');
+                                            showScreenPre(display,'<span style="color: blue;float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+content+'：'+ sender+'</span><br>');
                                         }else{
-                                            showScreen(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
+                                            showScreenPre(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
                                         }
                                     }
                                     if($("span:contains('(离线消息)')").length>0){
@@ -212,6 +212,12 @@
           $('#content').scrollTop($('#'+divId)[0].scrollHeight);
       };
 
+      function showScreenPre(divId,txt) {
+          $('#'+divId).prepend('<p style="display:none">' + txt + '</p>');
+          $('#'+divId+' p').show(500);
+          $('#content').scrollTop(0);
+      };
+
 
     //读取Cookie的方法
     function getCookie(key){
@@ -250,7 +256,6 @@
                       var count = $("#"+temp).attr("name");
                       if(count == "0"){
                          loadChatHistory(temp);
-                         $("#"+temp).attr("name","1");
                       }
                       $("#groupInfo").show(500);
                   }
@@ -296,7 +301,7 @@
         for(var i=0;i<groupList.length;i++){
             if( $("#groupList li:contains('"+groupList[i]+"')").text() == "" ){
                 $("#groupList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+groupList[i]+'</a></li>');
-                $("#groupOutPut").append('<div name="0" style="display:none" id="'+groupList[i]+'">====>>>'+groupList[i]+'</div>');
+                $("#groupOutPut").append('<div name="0" style="display:none" id="'+groupList[i]+'">====>>>'+groupList[i]+'(历史记录↑↑↑)</div>');
             }
         }
         //清掉多余的
@@ -375,11 +380,14 @@
 
     //加载群聊天记录
     function loadChatHistory(groupName){
+        var num = $("#"+groupName).attr("name");
+        num = parseInt(num)+1;
+        $("#"+groupName).attr("name",num+"");
         protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
                         if (err)
                             throw err;
                          var Msg = root.lookup("wechat.msg");
-                         var msg = Msg.create({type:3,data:{room:{type:6,rname:groupName}}});
+                         var msg = Msg.create({type:3,data:{room:{type:6,rname:groupName,body:num+""}}});
                          var encodedObj = Msg.encode(msg).finish();
                          websocket.send(encodedObj);
          });
@@ -431,7 +439,25 @@
          }
     }
 
+    function loadMore(){
+         var toHe = $("#toOne").val();
+         var temp;
+         if(toHe != ""){
+            toHe = toHe.split("@");
+            temp = toHe[1];
+            parentId = $("#"+temp).parent().attr("id");
+            if(parentId == "groupOutPut"){
+               loadChatHistory(temp);
+            }
+         }
+    }
+
     </script>
+    <style>
+		.loadMoreClass:hover{
+			color: red !important;
+		}
+	</style>
 </head>
 
 <body>
@@ -461,7 +487,7 @@
         </div>
     </div>
     <div id="content" style="overflow:scroll;height:400px;width:800px;float:left;margin-left:70px;">
-        <span>消息记录</span>
+        <span>消息记录 <span style="cursor:pointer;color:blue" onclick="loadMore()" class="loadMoreClass">↑↑↑加载更多↑↑↑</span></span>
         <div id="userOutPut"></div>
         <div id="groupOutPut"></div>
     </div>
