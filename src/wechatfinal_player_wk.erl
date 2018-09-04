@@ -67,10 +67,13 @@ send_msg(Sender,Decoder) ->
 %% @doc 加载私人聊天记录
 -spec load_private_chat_history(Decode::term()) -> term().
 load_private_chat_history(Decode) ->
+	io:format("aaaa~n"),
 	Sender = Decode#msg.data#data.history#history.sender,
 	SenderAtom = binary_to_atom(Sender,utf8),
 	Receiver = Decode#msg.data#data.history#history.receiver,
-	MsgList = wechatfinal_mnesia:q_msg_by_sr(Sender,Receiver),
+	PageNum = Decode#msg.data#data.history#history.pageNum,
+	io:format("bbbb~n"),
+	MsgList = wechatfinal_mnesia:q_msg_page2(Sender,Receiver,5,PageNum),
 	NewMsgList = [#chat{sender = S,body = B,receiver = R,display = Receiver,unread = atom_to_binary(lists:member(SenderAtom,O),utf8)}||{S,B,R,_Ty,_Ti,O} <- MsgList],
 	Msg = #msg{type = history,data = #data{history = #history{sender = Sender,receiver = Receiver,history = NewMsgList}}},
 	EncodeMsg = wechatfinal_cmd_pb:encode_msg(Msg),

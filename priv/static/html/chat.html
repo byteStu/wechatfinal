@@ -176,9 +176,9 @@
                                             tag = "(离线消息)";
                                         }
                                         if(sender == user){
-                                            showScreen(display,'<span style="color: blue;float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+content+'：'+ sender+'</span><br>');
+                                            showScreenPre(display,'<span style="color: blue;float:right;display:inline-block;border:1px solid #C1C1C1;margin-right:20px" >'+content+'：'+ sender+'</span><br>');
                                         }else{
-                                            showScreen(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
+                                            showScreenPre(display,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
                                         }
                                     }
                                     if($("span:contains('(离线消息)')").length>0){
@@ -263,7 +263,6 @@
               var count = $("#"+temp).attr("name");
               if(count == "0"){
                  loadChatHistory2(temp);
-                 $("#"+temp).attr("name","1");
               }
             }
          }
@@ -287,12 +286,12 @@
         console.log("onlineArr::"+onlineArr);
         for(var i=0;i<onlineArr.length;i++){
             $("#userList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)">'+onlineArr[i]+'</a></li>');
-            $("#userOutPut").append('<div name="0" style="display:none" id="'+onlineArr[i]+'">====>>>'+onlineArr[i]+'</div>');
+            $("#userOutPut").append('<div name="0" style="display:none" id="'+onlineArr[i]+'">====>>>'+onlineArr[i]+'(历史记录↑↑↑)</div>');
             $("#selectUserList").append('<option value='+onlineArr[i]+'>'+onlineArr[i]+'</option>');
         }
         for(var i=0;i<offlineArr.length;i++){
              $("#userList").append('<li>&nbsp;<a href="javascript:void(0)" onclick="atToMe(this)" style="color:#C1C1C1">'+offlineArr[i]+'</a></li>');
-             $("#userOutPut").append('<div name="0" style="display:none" id="'+offlineArr[i]+'">====>>>'+offlineArr[i]+'</div>');
+             $("#userOutPut").append('<div name="0" style="display:none" id="'+offlineArr[i]+'">====>>>'+offlineArr[i]+'(历史记录↑↑↑)</div>');
         }
     }
 
@@ -395,11 +394,14 @@
 
     //加载私聊的聊天记录
     function  loadChatHistory2(receiver){
+        var num = $("#"+receiver).attr("name");
+        num = parseInt(num)+1;
+        $("#"+receiver).attr("name",num+"");
         protobuf.load("/static/proto/wechatfinal_cmd.proto", function (err, root) {
                         if (err)
                             throw err;
                          var Msg = root.lookup("wechat.msg");
-                         var msg = Msg.create({type:5,data:{history:{sender:user,receiver:receiver}}});
+                         var msg = Msg.create({type:5,data:{history:{sender:user,receiver:receiver,pageNum:num}}});
                          var encodedObj = Msg.encode(msg).finish();
                          websocket.send(encodedObj);
          });
@@ -448,6 +450,8 @@
             parentId = $("#"+temp).parent().attr("id");
             if(parentId == "groupOutPut"){
                loadChatHistory(temp);
+            }else{
+               loadChatHistory2(temp);
             }
          }
     }
@@ -487,7 +491,7 @@
         </div>
     </div>
     <div id="content" style="overflow:scroll;height:400px;width:800px;float:left;margin-left:70px;">
-        <span>消息记录 <span style="cursor:pointer;color:blue" onclick="loadMore()" class="loadMoreClass">↑↑↑加载更多↑↑↑</span></span>
+        <span>消息记录<span style="cursor:pointer;color:blue;margin-left:280px" onclick="loadMore()" class="loadMoreClass">↑↑↑加载更多↑↑↑</span></span>
         <div id="userOutPut"></div>
         <div id="groupOutPut"></div>
     </div>

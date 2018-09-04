@@ -32,7 +32,8 @@
          update_msg/7,
          q_all_usernames/0,
          q_msg_by_sr/2,
-         q_msg_page/3
+         q_msg_page/3,
+         q_msg_page2/4
          ]).
 
 -record(users,{uname,pwd}).
@@ -187,7 +188,7 @@ update_msg(Sender,Body,Receiver,MsgType,Sendtimer,Offline,CurrUser) ->
                  end,
     mnesia:transaction(F).
 
-%% @doc 分页查询聊天记录
+%% @doc 分页查询群聊天记录
 -spec q_msg_page(RoomName::atom(),PageSize::integer(),PageNum::integer()) -> term().
 q_msg_page(RoomName,PageSize,PageNum) ->
     F = fun() ->
@@ -198,6 +199,19 @@ q_msg_page(RoomName,PageSize,PageNum) ->
         end,
     {atomic, Val} = mnesia:transaction(F),
     Val.
+
+%% @doc 分页查询 私聊消息
+-spec q_msg_page2(Sender::term(),Receiver::term(),PageSize::term(),PageNum::term()) -> term().
+q_msg_page2(Sender,Receiver,PageSize,PageNum) ->
+    F = fun() ->
+        Q = qlc:q([ {S,B,R,Ty,Ti,O} || #msgs{sender = S,body = B,receiver = R,msgtype = Ty,sendtimer = Ti,offline = O} <- mnesia:table(msgs),(S =:= Sender andalso R =:= Receiver) or (S =:= Receiver andalso R =:= Sender)]),
+        QA = qlc:e(qlc:keysort(5,Q,[{order,descending}])),
+        QC = qlc:cursor(QA),
+        get_page(QC,PageSize,PageNum)
+        end,
+    {atomic, Val} = mnesia:transaction(F),
+    Val.
+    
 
 
 
