@@ -50,7 +50,6 @@ send_online_user_to_room(UserNameAtom) ->
 send_offline_user_to_room(UserNameAtom) ->
 	%% 查询所有房间
 	RoomList = wechatfinal_room_wk:get_room_list(),
-	io:format("UserNameAtom:~p~n",[UserNameAtom]),
 	[X ! {advice_room_of_offline_user,X,UserNameAtom}||X<-RoomList].
 
 %% @doc 通知群里，有人退群了
@@ -123,7 +122,6 @@ handle_call(_Request, _From, State) ->
 handle_cast({send_online_msg}, State) ->
 	%% 获得在线用户列表
 	UserList = wechatfinal_player_wk:get_online_player(),
-	io:format("当前在线人员:~p~n",[UserList]),
 	OnlineUsers = [wechatfinal_util:get_ws_name(X)||X <- UserList],
 	UserListBinary = wechatfinal_util:atomList_join_to_binary(OnlineUsers),
 	Usernames = wechatfinal_mnesia:q_all_usernames(),
@@ -133,7 +131,6 @@ handle_cast({send_online_msg}, State) ->
 	
 	Msg = #msg{type = online,data = #data{online = #online{type = private,body = UserListBinary,online = OnlineUsersBinary, offline = OfflineUsersBinary}}},
 	MsgEncode = wechatfinal_cmd_pb:encode_msg(Msg),
-	io:format("XXXXXXX:~p~n",[wechatfinal_player_wk:get_online_player()]),
 	[X ! {send_online_msg,MsgEncode} ||X <- UserList,whereis(X) =/= undefined],
 	{noreply, State};
 
@@ -210,7 +207,6 @@ do_send_room_msg([UserAtom|T]) ->
 	
 	RoomListBinary = wechatfinal_util:atomList_join_to_binary(RoomList),
 	Msg = #msg{type = online,data = #data{online = #online{type = public,body = RoomListBinary}}},
-	io:format("~p的房间列表为：~p~n",[NewUserAtom,RoomListBinary]),
 	MsgEncode = wechatfinal_cmd_pb:encode_msg(Msg),
 	case whereis(UserAtom) of
 		  undefined ->ok;

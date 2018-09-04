@@ -52,10 +52,9 @@ create_room(Decoder) ->
 	RoomNameAtom = binary_to_atom(RoomName,utf8),
 	UserName = Decoder#msg.data#data.room#room.body,
 	UserNameAtom = binary_to_atom(UserName,utf8),
-	io:format("创建房间,新建房间名：~p~n",[RoomNameAtom]),
 	%% 开启房间
 	wechatfinal_room_sup:start_child(RoomNameAtom),
-	erlang:send_after(1000,RoomNameAtom,{add_creator,UserNameAtom}),
+	erlang:send_after(500,RoomNameAtom,{add_creator,UserNameAtom}),
 	%% 将群保存起来
 	wechatfinal_mnesia:create_groups_by_name(RoomNameAtom,UserNameAtom).
 
@@ -191,7 +190,7 @@ handle_call({remove_user,RoomNameAtom,UserAtom}, _From, #state{userList = UserLi
 	%% 系统消息，通知一下
 	wechatfinal_broadcast_wk:send_exit_group_user_to_room(RoomNameAtom,UserAtom),
 	%% 刷新群成员
-	erlang:send_after(1000,RoomNameAtom,{flush_room_member,RoomNameAtom}),
+	erlang:send_after(500,RoomNameAtom,{flush_room_member,RoomNameAtom}),
 	%% 广播一下
 	wechatfinal_broadcast_wk:send_room_msg(),
 	{reply, ok, NewState};

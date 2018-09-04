@@ -43,7 +43,7 @@ sign_in(Player) when is_atom(Player)->
 -spec sign_out(WkPlayer::atom()) -> atom().
 sign_out(WkPlayer) when is_atom(WkPlayer) ->
 	
-	io:format("[~p]正在111注销。。。~n",[WkPlayer]),
+	io:format("[~p]正在注销。。。~n",[WkPlayer]),
 	WsPlayer = wechatfinal_util:get_ws_name(WkPlayer),
 	%% 下线ws进程
 	case whereis(WsPlayer) =/= undefined of
@@ -67,12 +67,10 @@ send_msg(Sender,Decoder) ->
 %% @doc 加载私人聊天记录
 -spec load_private_chat_history(Decode::term()) -> term().
 load_private_chat_history(Decode) ->
-	io:format("aaaa~n"),
 	Sender = Decode#msg.data#data.history#history.sender,
 	SenderAtom = binary_to_atom(Sender,utf8),
 	Receiver = Decode#msg.data#data.history#history.receiver,
 	PageNum = Decode#msg.data#data.history#history.pageNum,
-	io:format("bbbb~n"),
 	MsgList = wechatfinal_mnesia:q_msg_page2(Sender,Receiver,5,PageNum),
 	NewMsgList = [#chat{sender = S,body = B,receiver = R,display = Receiver,unread = atom_to_binary(lists:member(SenderAtom,O),utf8)}||{S,B,R,_Ty,_Ti,O} <- MsgList],
 	Msg = #msg{type = history,data = #data{history = #history{sender = Sender,receiver = Receiver,history = NewMsgList}}},
@@ -163,8 +161,8 @@ handle_cast({send_msg,Decoder}, State) ->
 	EncodeMsg = wechatfinal_cmd_pb:encode_msg(Decoder),
 	%% 如果用户在线，就把消息发出去
 	case whereis(ReceiverAtom) =/= undefined of
-		true  ->io:format("这个好友是在线的：~p~n",[ReceiverAtom]),ReceiverAtom ! {resp_msg,EncodeMsg};
-		false ->io:format("这个好友是离线的：~p~n",[ReceiverAtom]),ok
+		true  ->ReceiverAtom ! {resp_msg,EncodeMsg};
+		false ->ok
 	end,
 	Online = case Type of
 				private -> case whereis(ReceiverAtom) of
