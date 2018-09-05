@@ -107,6 +107,7 @@
                                     tag = "(离线消息)";
                                 }
                                 showScreen(showTag,'<span style="color: blue;float:left;display:inline-block;border:1px solid #C1C1C1;margin-left:20px">' +sender+"："+content+ '<span style="color:red;font-size:8px">'+tag+'</span></span><br>');
+                                addColor(showTag);
                             break;
                             case 2: //在线 用户列表，群列表更新
                                 var data =  msg.data.online.body;
@@ -232,6 +233,7 @@
 
     var timer;
     function atToMe(obj){
+       $(obj).removeClass("msgHint");
        var toOne = $(obj).text();
        $("#toOne").val("@"+toOne);
        $("#userOutPut div").each(function(i){
@@ -476,10 +478,23 @@
          }
     }
 
+    function addColor(divId){
+        $("a:contains('"+divId+"')").each(function(i){
+                if($(this).text() == divId){
+                    $(this).addClass("msgHint");
+                }
+        })
+    }
     </script>
     <style>
 		.loadMoreClass:hover{
 			color: red !important;
+		}
+		.msgHint{
+		    color: red !important;
+		}
+		.msgHint:after{
+		    content:"(新消息!)";
 		}
 	</style>
 </head>
@@ -497,7 +512,7 @@
     <p id="connecting">
         <input type='hidden' id="server" value="">
     </p>
-    <div style="float:left;margin-right:5px;">
+    <div style="float:left;margin-right:20px;">
         <div id="userListdiv">
             <span>用户列表</span>
             <ol id="userList">
